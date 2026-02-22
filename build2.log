@@ -1,0 +1,6 @@
+
+> miro-clone@0.1.0 build
+> next build
+
+⨯ Unable to acquire lock at D:\Manro\miro-clone\.next\lock, is another instance of next build running?
+  Suggestion: If you intended to restart next build, terminate the other process, and then try again.

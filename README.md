@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Miro Clone — Collaborative Whiteboard
 
-## Getting Started
+A real-time collaborative whiteboard inspired by Miro, built with Next.js 15, React Flow, Liveblocks, Clerk, and Convex.
 
-First, run the development server:
+---
+
+## 🚀 Setup Instructions
+
+### 1. Fill in Environment Variables
+
+Open `.env.local` and fill in your API keys:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# From https://dashboard.clerk.com → API Keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+# From https://dashboard.convex.dev (run step 2 first)
+NEXT_PUBLIC_CONVEX_URL=https://xxx.convex.cloud
+
+# From https://liveblocks.io/dashboard → API Keys
+NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY=pk_dev_...
+LIVEBLOCKS_SECRET_KEY=sk_dev_...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Initialize Convex (in a separate terminal)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd d:\Manro\miro-clone
+npx convex dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- This will prompt you to create/log in to a Convex account
+- Copy the deployment URL into `NEXT_PUBLIC_CONVEX_URL` in `.env.local`
+- This also generates the `convex/_generated/` types automatically
 
-## Learn More
+### 3. Configure Convex + Clerk Integration
 
-To learn more about Next.js, take a look at the following resources:
+In your Convex dashboard, add the Clerk JWT domain:
+1. Go to `Settings → Authentication`
+2. Add `Clerk` as a provider
+3. Enter your **Clerk Frontend API URL** (e.g. `https://xyz.clerk.accounts.dev`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Update `convex/auth.config.ts` with your Clerk domain:
+```ts
+domain: "https://YOUR_CLERK_DOMAIN.clerk.accounts.dev",
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Run the Development Server
 
-## Deploy on Vercel
+```bash
+# Terminal 1: Convex backend
+npx convex dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Terminal 2: Next.js frontend
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 📁 Project Structure
+
+```
+miro-clone/
+├── app/
+│   ├── (dashboard)/           # Dashboard pages
+│   │   ├── layout.tsx         # Sidebar + Navbar layout
+│   │   ├── page.tsx           # Board listing page
+│   │   └── _components/       # Board cards, search, etc.
+│   ├── board/[boardId]/       # Individual board pages
+│   │   ├── page.tsx           # RoomProvider wrapper
+│   │   └── _components/       # Canvas, toolbar, cursors
+│   ├── api/
+│   │   └── liveblocks-auth/   # Liveblocks JWT endpoint
+│   ├── sign-in/               # Clerk sign-in page
+│   └── sign-up/               # Clerk sign-up page
+├── components/
+│   ├── nodes/                 # Custom React Flow nodes
+│   │   ├── text-node.tsx      # Markdown text node
+│   │   └── image-node.tsx     # Image URL node
+│   └── ui/                    # Shared UI primitives
+├── convex/
+│   ├── schema.ts              # Database schema
+│   ├── boards.ts              # Board mutations & queries
+│   └── auth.config.ts         # Clerk JWT config
+├── hooks/                     # Custom React hooks
+├── store/                     # Zustand stores
+├── lib/                       # Utilities
+├── liveblocks.config.ts       # Liveblocks client setup
+└── middleware.ts              # Clerk auth middleware
+```
+
+---
+
+## ✨ Features
+
+| Feature | Status |
+|---------|--------|
+| 🔐 Clerk Authentication | ✅ |
+| 🏢 Organization + Personal Boards | ✅ |
+| 📋 Dashboard with Board List | ✅ |
+| 🔍 Search Boards | ✅ |
+| ⭐ Favorite Boards | ✅ |
+| 🖍️ Rename / Delete Boards | ✅ |
+| 🎨 Infinite Canvas (React Flow) | ✅ |
+| 🖱️ Live Cursors (Liveblocks) | ✅ |
+| 🔄 Real-time Node/Edge Sync | ✅ |
+| 📝 TextNode with Markdown | ✅ |
+| 🖼️ ImageNode with URL | ✅ |
+| ↩️ Undo/Redo (Ctrl+Z/Y) | ✅ |
+| 🗺️ MiniMap + Controls | ✅ |
+| 👥 Participant Avatars | ✅ |
