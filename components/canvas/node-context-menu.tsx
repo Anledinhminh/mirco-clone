@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/context-menu";
 import {
     ArrowUpToLine, ArrowDownToLine, Copy, Trash2,
-    BringToFront, SendToBack,
 } from "lucide-react";
 
 interface NodeContextMenuProps {

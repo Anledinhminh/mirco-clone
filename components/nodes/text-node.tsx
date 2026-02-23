@@ -25,6 +25,7 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
     const initialContent = nodeData.html ?? (nodeData.text ? `<p>${nodeData.text}</p>` : "<p>Double-click to edit…</p>");
 
     const editor = useEditor({
+        immediatelyRender: false,
         extensions: [
             StarterKit.configure({ heading: false }),
             Color,
