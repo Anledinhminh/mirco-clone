@@ -1,53 +1,106 @@
 "use client";
 
-import { Type, Image, MousePointer2, Undo2, Redo2, StickyNote } from "lucide-react";
+import { Type, Image, MousePointer2, Undo2, Redo2, StickyNote, Grid2x2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export type ActiveTool = "select" | "text" | "image" | "sticky";
+
 interface ToolbarProps {
-    onAddTextNode: () => void;
+    activeTool: ActiveTool;
+    onToolChange: (tool: ActiveTool) => void;
     onAddImageNode: () => void;
     onAddStickyNode: () => void;
     onUndo: () => void;
     onRedo: () => void;
+    snapEnabled: boolean;
+    onSnapToggle: () => void;
 }
 
-interface ToolButtonProps {
+function ToolButton({
+    icon, label, onClick, isActive, title,
+}: {
     icon: React.ReactNode;
     label: string;
     onClick: () => void;
     isActive?: boolean;
-}
-
-function ToolButton({ icon, label, onClick, isActive }: ToolButtonProps) {
+    title?: string;
+}) {
     return (
         <button
             onClick={onClick}
-            title={label}
+            title={title ?? label}
             className={cn(
-                "p-2.5 rounded-xl flex flex-col items-center justify-center gap-1 w-14 transition-all duration-150",
-                "text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95",
-                isActive && "bg-blue-100 text-blue-700"
+                "p-2 rounded-xl flex flex-col items-center justify-center gap-1 w-14 transition-all duration-150 select-none",
+                isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                    : "text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95"
             )}
         >
             {icon}
-            <span className="text-[9px] font-medium">{label}</span>
+            <span className="text-[9px] font-medium leading-none">{label}</span>
         </button>
     );
 }
 
-export function Toolbar({ onAddTextNode, onAddImageNode, onAddStickyNode, onUndo, onRedo }: ToolbarProps) {
+function Divider() {
+    return <div className="w-px h-10 bg-slate-200 mx-0.5" />;
+}
+
+export function Toolbar({
+    activeTool, onToolChange, onAddImageNode,
+    onUndo, onRedo, snapEnabled, onSnapToggle,
+}: ToolbarProps) {
     return (
         <div className="absolute left-1/2 bottom-6 -translate-x-1/2 z-10 pointer-events-auto">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 flex items-center gap-1">
-                <ToolButton icon={<MousePointer2 className="h-5 w-5" />} label="Select" onClick={() => { }} />
-                <div className="w-px h-10 bg-slate-200 mx-1" />
-                <ToolButton icon={<Type className="h-5 w-5" />} label="Text" onClick={onAddTextNode} />
-                <ToolButton icon={<Image className="h-5 w-5" />} label="Image" onClick={onAddImageNode} />
-                <ToolButton icon={<StickyNote className="h-5 w-5" />} label="Sticky" onClick={onAddStickyNode} />
-                <div className="w-px h-10 bg-slate-200 mx-1" />
-                <ToolButton icon={<Undo2 className="h-5 w-5" />} label="Undo" onClick={onUndo} />
-                <ToolButton icon={<Redo2 className="h-5 w-5" />} label="Redo" onClick={onRedo} />
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-1.5 flex items-center gap-0.5">
+                <ToolButton
+                    icon={<MousePointer2 className="h-5 w-5" />}
+                    label="Select"
+                    title="Select (V)"
+                    onClick={() => onToolChange("select")}
+                    isActive={activeTool === "select"}
+                />
+                <Divider />
+                <ToolButton
+                    icon={<Type className="h-5 w-5" />}
+                    label="Text"
+                    title="Text — click canvas to place (T)"
+                    onClick={() => onToolChange(activeTool === "text" ? "select" : "text")}
+                    isActive={activeTool === "text"}
+                />
+                <ToolButton
+                    icon={<Image className="h-5 w-5" />}
+                    label="Image"
+                    title="Image — add at center (I)"
+                    onClick={onAddImageNode}
+                />
+                <ToolButton
+                    icon={<StickyNote className="h-5 w-5" />}
+                    label="Sticky"
+                    title="Sticky note — click canvas to place (S)"
+                    onClick={() => onToolChange(activeTool === "sticky" ? "select" : "sticky")}
+                    isActive={activeTool === "sticky"}
+                />
+                <Divider />
+                <ToolButton
+                    icon={<Grid2x2 className="h-5 w-5" />}
+                    label="Snap"
+                    title="Snap to grid (G)"
+                    onClick={onSnapToggle}
+                    isActive={snapEnabled}
+                />
+                <Divider />
+                <ToolButton icon={<Undo2 className="h-5 w-5" />} label="Undo" title="Undo (Ctrl+Z)" onClick={onUndo} />
+                <ToolButton icon={<Redo2 className="h-5 w-5" />} label="Redo" title="Redo (Ctrl+Y)" onClick={onRedo} />
             </div>
+
+            {/* Hint when placement tool is active */}
+            {activeTool !== "select" && (
+                <p className="text-center text-xs text-slate-500 mt-2 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm select-none">
+                    Click on canvas to place ·{" "}
+                    <kbd className="font-semibold">Esc</kbd> to cancel
+                </p>
+            )}
         </div>
     );
 }

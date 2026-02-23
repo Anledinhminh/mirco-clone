@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useState, useRef, useEffect } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -67,15 +67,19 @@ export const StickyNoteNode = memo(function StickyNoteNode({
     return (
         <div
             className={cn(
-                "relative rounded-sm shadow-md border min-w-[200px] min-h-[200px] p-4 transition-all duration-150",
+                "relative rounded-sm shadow-md border min-w-[200px] min-h-[200px] p-4 transition-all duration-150 h-full",
                 colors[color],
-                selected && "ring-2 ring-blue-500 ring-offset-2 scale-[1.02] shadow-xl"
+                selected && "ring-2 ring-blue-500 ring-offset-2 shadow-xl"
             )}
             onDoubleClick={handleDoubleClick}
-            style={{
-                boxShadow: "2px 4px 8px rgba(0,0,0,0.1)",
-            }}
         >
+            <NodeResizer
+                minWidth={200}
+                minHeight={200}
+                isVisible={selected}
+                lineClassName="border-blue-400"
+                handleClassName="!bg-white !border-2 !border-blue-400 !rounded !w-2 !h-2"
+            />
             <div
                 className="absolute top-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] rounded-bl-sm"
                 style={{

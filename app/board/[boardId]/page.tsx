@@ -2,8 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { CanvasWrapper } from "./_components/canvas-wrapper";
 import { BoardLoading } from "./_components/board-loading";
-import { RoomProvider, LiveblocksProvider } from "@/liveblocks.config";
-import { Suspense } from "react";
+import { RoomProvider, LiveblocksProvider, ClientSideSuspense } from "@/liveblocks.config";
 
 interface BoardPageProps {
     params: Promise<{ boardId: string }>;
@@ -19,12 +18,12 @@ export default async function BoardPage({ params }: BoardPageProps) {
             <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
                 <RoomProvider
                     id={resolvedParams.boardId}
-                    initialPresence={{ cursor: null, name: "", color: "#000" }}
+                    initialPresence={{ cursor: null, name: "", color: "#000", selectedNodeId: null, viewport: null }}
                     initialStorage={{ nodes: [], edges: [] }}
                 >
-                    <Suspense fallback={<BoardLoading />}>
+                    <ClientSideSuspense fallback={<BoardLoading />}>
                         <CanvasWrapper boardId={resolvedParams.boardId} />
-                    </Suspense>
+                    </ClientSideSuspense>
                 </RoomProvider>
             </LiveblocksProvider>
         </div>

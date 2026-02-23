@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useCallback } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
 import { ImageIcon, Link2, X, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,8 +44,15 @@ export const ImageNode = memo(function ImageNode({
                 "bg-white rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-150",
                 selected ? "border-purple-500 shadow-purple-200 shadow-lg" : "border-slate-200 hover:border-slate-300"
             )}
-            style={{ minWidth: 220, minHeight: 180 }}
+            style={{ minWidth: 220, minHeight: 180, height: "100%" }}
         >
+            <NodeResizer
+                minWidth={220}
+                minHeight={180}
+                isVisible={selected}
+                lineClassName="border-purple-400"
+                handleClassName="!bg-white !border-2 !border-purple-400 !rounded !w-2 !h-2"
+            />
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 flex items-center justify-between gap-1.5">
                 <div className="flex items-center gap-1.5">

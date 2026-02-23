@@ -1,24 +1,21 @@
 "use client";
 
 import { createClient } from "@liveblocks/client";
-
-const client = createClient({
-    authEndpoint: "/api/liveblocks-auth",
-    throttle: 16,
-});
+import { createRoomContext } from "@liveblocks/react";
 
 // Presence = per-user ephemeral state (cursor position)
 type Presence = {
     cursor: { x: number; y: number } | null;
     name: string;
     color: string;
+    selectedNodeId: string | null;
+    viewport: { x: number; y: number; zoom: number } | null;
 };
 
 // Storage uses plain serializable types for Liveblocks (JSON-compatible)
-// Nodes/edges stored as JSON arrays so Liveblocks can serialize them
 type Storage = {
-    nodes: unknown[];
-    edges: unknown[];
+    nodes: any[];
+    edges: any[];
 };
 
 // UserMeta = permanent user info stored by auth endpoint
@@ -38,22 +35,34 @@ type RoomEvent = {
 
 export type { Presence, Storage, UserMeta, RoomEvent };
 
-// In Liveblocks v3, you define types globally
-declare module "@liveblocks/client" {
-    interface Liveblocks {
-        Presence: Presence;
-        Storage: Storage;
-        UserMeta: UserMeta;
-        RoomEvent: RoomEvent;
-        ThreadMetadata: never;
-        RoomInfo: never;
-    }
-}
+const client = createClient({
+    authEndpoint: "/api/liveblocks-auth",
+    throttle: 16,
+});
 
-// Export the hooks from suspense directly
+const {
+    suspense: {
+        RoomProvider,
+        useRoom,
+        useMyPresence,
+        useUpdateMyPresence,
+        useSelf,
+        useOthers,
+        useOthersMapped,
+        useOthersConnectionIds,
+        useStorage,
+        useMutation,
+        useHistory,
+        useStatus,
+    },
+} = createRoomContext<Presence, Storage, UserMeta, RoomEvent>(client);
+
+// LiveblocksProvider is NOT needed when using createRoomContext (auth is handled by the client).
+// We export it from the package for convenience if needed elsewhere.
+export { LiveblocksProvider, ClientSideSuspense } from "@liveblocks/react";
+
 export {
     RoomProvider,
-    LiveblocksProvider,
     useRoom,
     useMyPresence,
     useUpdateMyPresence,
@@ -65,4 +74,4 @@ export {
     useMutation,
     useHistory,
     useStatus,
-} from "@liveblocks/react/suspense";
+};

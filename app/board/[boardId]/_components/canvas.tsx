@@ -17,9 +17,10 @@ import {
     addEdge,
     type Node,
     type Edge,
+    type Viewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     useStorage,
     useMutation,
@@ -30,12 +31,13 @@ import {
 } from "@/liveblocks.config";
 import { useUser } from "@clerk/nextjs";
 import { CursorsPresence } from "./cursors-presence";
-import { Toolbar } from "./toolbar";
+import { Toolbar, type ActiveTool } from "./toolbar";
 import { BoardInfo } from "./board-info";
 import { Participants } from "./participants";
 import { TextNode } from "@/components/nodes/text-node";
 import { ImageNode } from "@/components/nodes/image-node";
 import { StickyNoteNode } from "@/components/nodes/sticky-note-node";
+import { NodeContextMenu } from "@/components/canvas/node-context-menu";
 import { useBoardRole } from "@/hooks/use-board-role";
 
 const nodeTypes = {
@@ -57,31 +59,41 @@ interface CanvasProps {
 export function Canvas({ boardId }: CanvasProps) {
     const { user } = useUser();
     const [, updateMyPresence] = useMyPresence();
-    const others = useOthers();
     const self = useSelf();
     const { undo, redo } = useHistory();
-    const { screenToFlowPosition } = useReactFlow();
+    const { screenToFlowPosition, getViewport, setViewport, getNodes } = useReactFlow();
+
+    // ── Local state ──────────────────────────────────────────────────
+    const [activeTool, setActiveTool] = useState<ActiveTool>("select");
+    const [snapEnabled, setSnapEnabled] = useState(false);
+    const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+    const [followingId, setFollowingId] = useState<number | null>(null);
+    const followingRef = useRef(followingId);
+    followingRef.current = followingId;
 
     const role = useBoardRole({ boardId });
     const isViewer = role === "viewer";
 
-    // Read from Liveblocks, cast to typed arrays
-    const rawNodes = useStorage((root) => root.nodes);
-    const rawEdges = useStorage((root) => root.edges);
+    // ── Liveblocks Storage ───────────────────────────────────────────
+    const rawNodes = useStorage((root) => (root as any).nodes);
+    const rawEdges = useStorage((root) => (root as any).edges);
     const nodes = (rawNodes ?? []) as Node[];
     const edges = (rawEdges ?? []) as Edge[];
 
+    // ── Set initial presence ─────────────────────────────────────────
     useEffect(() => {
         if (user) {
             updateMyPresence({
                 name: user.fullName ?? user.username ?? "Anonymous",
                 color: self?.info?.color ?? "#6366f1",
                 cursor: null,
+                selectedNodeId: null,
+                viewport: null,
             });
         }
     }, [user, updateMyPresence, self?.info?.color]);
 
-    // ── Liveblocks mutations ────────────────────────────────────────
+    // ── Liveblocks mutations ─────────────────────────────────────────
     const setNodes = useMutation(({ storage }, changes: NodeChange[]) => {
         const current = (storage.get("nodes") as unknown as Node[]) ?? [];
         const updated = applyNodeChanges(changes, current);
@@ -110,31 +122,101 @@ export function Canvas({ boardId }: CanvasProps) {
         (
             { storage },
             type: "textNode" | "imageNode" | "stickyNode",
-            position: { x: number; y: number }
+            position: { x: number; y: number },
+            initialData?: Record<string, unknown>
         ) => {
             const existing = (storage.get("nodes") as unknown as Node[]) ?? [];
+            const defaultData =
+                type === "textNode" || type === "stickyNode"
+                    ? { html: "<p>Type here…</p>", text: "" }
+                    : { url: "" };
             const newNode: Node = {
                 id: `node-${Date.now()}`,
                 type,
                 position,
-                data:
-                    type === "textNode" || type === "stickyNode"
-                        ? { text: "Double-click to edit…" }
-                        : { url: "" },
-                style: { width: type === "textNode" ? 200 : 250 },
+                data: { ...defaultData, ...initialData },
+                style: { width: type === "textNode" ? 220 : 260 },
             };
             storage.set("nodes", [...existing, newNode] as unknown[]);
         },
         []
     );
 
+    const deleteNodes = useMutation(({ storage }, ids: string[]) => {
+        const current = (storage.get("nodes") as unknown as Node[]) ?? [];
+        storage.set("nodes", current.filter((n) => !ids.includes(n.id)) as unknown[]);
+        // Also remove edges connected to deleted nodes
+        const currentEdges = (storage.get("edges") as unknown as Edge[]) ?? [];
+        storage.set("edges", currentEdges.filter(
+            (e) => !ids.includes(e.source) && !ids.includes(e.target)
+        ) as unknown[]);
+    }, []);
+
+    const duplicateNode = useMutation(({ storage }, id: string) => {
+        const current = (storage.get("nodes") as unknown as Node[]) ?? [];
+        const original = current.find((n) => n.id === id);
+        if (!original) return;
+        const copy: Node = {
+            ...original,
+            id: `node-${Date.now()}`,
+            position: { x: original.position.x + 20, y: original.position.y + 20 },
+        };
+        storage.set("nodes", [...current, copy] as unknown[]);
+    }, []);
+
+    const setNodeZIndex = useMutation(
+        ({ storage }, id: string, direction: "front" | "back") => {
+            const current = (storage.get("nodes") as unknown as Node[]) ?? [];
+            const maxZ = Math.max(...current.map((n) => (n.style?.zIndex as number) ?? 0), 0);
+            const updated = current.map((n) => {
+                if (n.id !== id) return n;
+                return {
+                    ...n,
+                    style: { ...n.style, zIndex: direction === "front" ? maxZ + 1 : -1 },
+                };
+            });
+            storage.set("nodes", updated as unknown[]);
+        },
+        []
+    );
+
+    const updateNodeData = useMutation(({ storage }, id: string, data: any) => {
+        const currentNodes = (storage.get("nodes") as unknown as Node[]) ?? [];
+        const index = currentNodes.findIndex((n) => n.id === id);
+        if (index !== -1) {
+            const node = currentNodes[index];
+            const newNodes = [...currentNodes];
+            newNodes[index] = { ...node, data: { ...node.data, ...data } };
+            storage.set("nodes", newNodes as unknown[]);
+        }
+    }, []);
+
+    // ── Sync node data changes ───────────────────────────────────────
+    useEffect(() => {
+        const handler = (e: CustomEvent) => {
+            if (isViewer) return;
+            updateNodeData(e.detail.id, e.detail.data);
+        };
+        document.addEventListener("nodeDataChange", handler as EventListener);
+        return () => document.removeEventListener("nodeDataChange", handler as EventListener);
+    }, [updateNodeData, isViewer]);
+
+    // ── Selection → presence sync ────────────────────────────────────
+    const onSelectionChange = useCallback(
+        ({ nodes: selected }: { nodes: Node[] }) => {
+            const ids = selected.map((n) => n.id);
+            setSelectedNodeIds(ids);
+            updateMyPresence({ selectedNodeId: ids[0] ?? null });
+        },
+        [updateMyPresence]
+    );
+
     // ── Mouse tracking ───────────────────────────────────────────────
     const onMouseMove = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
+            if (followingRef.current !== null) return; // don't override while following
             const rect = e.currentTarget.getBoundingClientRect();
-            updateMyPresence({
-                cursor: { x: e.clientX - rect.left, y: e.clientY - rect.top },
-            });
+            updateMyPresence({ cursor: { x: e.clientX - rect.left, y: e.clientY - rect.top } });
         },
         [updateMyPresence]
     );
@@ -143,98 +225,190 @@ export function Canvas({ boardId }: CanvasProps) {
         updateMyPresence({ cursor: null });
     }, [updateMyPresence]);
 
-    // ── Sync Custom Node Data ────────────────────────────────────────
-    const updateNodeData = useMutation(({ storage }, id: string, data: any) => {
-        const currentNodes = (storage.get("nodes") as unknown as Node[]) ?? [];
-        const index = currentNodes.findIndex((n) => n.id === id);
-        if (index !== -1) {
-            const node = currentNodes[index];
-            const updatedNode = { ...node, data: { ...node.data, ...data } };
-            const newNodes = [...currentNodes];
-            newNodes[index] = updatedNode;
-            storage.set("nodes", newNodes as unknown[]);
-        }
+    // ── Viewport broadcast (for following mode) ───────────────────────
+    const onMoveEnd = useCallback(
+        (event: any, viewport: Viewport) => {
+            updateMyPresence({ viewport });
+        },
+        [updateMyPresence]
+    );
+
+    // ── Following mode ────────────────────────────────────────────────
+    const others = useOthers();
+
+    useEffect(() => {
+        if (followingId === null) return;
+        const target = others.find((o) => o.connectionId === followingId);
+        if (!target?.presence?.viewport) return;
+        const { x, y, zoom } = target.presence.viewport;
+        setViewport({ x, y, zoom }, { duration: 200 });
+    }, [others, followingId, setViewport]);
+
+    const toggleFollow = useCallback((connectionId: number) => {
+        setFollowingId((prev) => (prev === connectionId ? null : connectionId));
     }, []);
 
-    useEffect(() => {
-        const handler = (e: CustomEvent) => {
-            if (isViewer) return;
-            const { id, data } = e.detail;
-            updateNodeData(id, data);
-        };
-        document.addEventListener("nodeDataChange", handler as EventListener);
-        return () => document.removeEventListener("nodeDataChange", handler as EventListener);
-    }, [updateNodeData, isViewer]);
-
-    // ── Undo / Redo keyboard shortcuts ──────────────────────────────
+    // ── Keyboard shortcuts ────────────────────────────────────────────
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            const isEditing =
+                target.tagName === "INPUT" ||
+                target.tagName === "TEXTAREA" ||
+                target.isContentEditable ||
+                target.closest(".ProseMirror");
+            if (isEditing) return;
+
             if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+                e.preventDefault();
                 e.shiftKey ? redo() : undo();
             }
-            if ((e.metaKey || e.ctrlKey) && e.key === "y") redo();
+            if ((e.metaKey || e.ctrlKey) && e.key === "y") { e.preventDefault(); redo(); }
+            if (e.key === "Escape") {
+                setActiveTool("select");
+                setFollowingId(null);
+            }
+            if ((e.key === "Delete" || e.key === "Backspace") && !isViewer) {
+                const ids = selectedNodeIds;
+                if (ids.length > 0) { e.preventDefault(); deleteNodes(ids); }
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === "d" && !isViewer) {
+                e.preventDefault();
+                if (selectedNodeIds.length > 0) duplicateNode(selectedNodeIds[0]);
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === "]" && !isViewer) {
+                e.preventDefault();
+                if (selectedNodeIds.length > 0) setNodeZIndex(selectedNodeIds[0], "front");
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === "[" && !isViewer) {
+                e.preventDefault();
+                if (selectedNodeIds.length > 0) setNodeZIndex(selectedNodeIds[0], "back");
+            }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [undo, redo]);
+    }, [undo, redo, selectedNodeIds, deleteNodes, duplicateNode, setNodeZIndex, isViewer]);
 
-    // ── Add node helpers ─────────────────────────────────────────────
-    const onAddTextNode = useCallback(() => {
-        const pos = screenToFlowPosition({
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2,
-        });
-        addNode("textNode", pos);
-    }, [addNode, screenToFlowPosition]);
+    // ── Click-to-place on pane ─────────────────────────────────────────
+    const onPaneClick = useCallback(
+        (e: React.MouseEvent) => {
+            if (isViewer) return;
+            if (activeTool === "text") {
+                const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+                addNode("textNode", pos);
+                setActiveTool("select");
+            } else if (activeTool === "sticky") {
+                const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+                addNode("stickyNode", pos);
+                setActiveTool("select");
+            }
+        },
+        [activeTool, isViewer, screenToFlowPosition, addNode]
+    );
 
+    // ── Ctrl+V Image Paste ────────────────────────────────────────────
+    useEffect(() => {
+        const handlePaste = (e: ClipboardEvent) => {
+            if (isViewer) return;
+            const target = e.target as HTMLElement;
+            if (target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (const item of Array.from(items)) {
+                if (item.type.startsWith("image/")) {
+                    e.preventDefault();
+                    const blob = item.getAsFile();
+                    if (!blob) continue;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const dataUrl = ev.target?.result as string;
+                        if (!dataUrl) return;
+                        const pos = screenToFlowPosition({
+                            x: window.innerWidth / 2,
+                            y: window.innerHeight / 2,
+                        });
+                        addNode("imageNode", pos, { url: dataUrl });
+                    };
+                    reader.readAsDataURL(blob);
+                    break;
+                }
+            }
+        };
+        document.addEventListener("paste", handlePaste);
+        return () => document.removeEventListener("paste", handlePaste);
+    }, [isViewer, screenToFlowPosition, addNode]);
+
+    // ── Add node from toolbar ──────────────────────────────────────────
     const onAddImageNode = useCallback(() => {
-        const pos = screenToFlowPosition({
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2,
-        });
+        const pos = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
         addNode("imageNode", pos);
     }, [addNode, screenToFlowPosition]);
 
-    const onAddStickyNode = useCallback(() => {
-        const pos = screenToFlowPosition({
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2,
-        });
-        addNode("stickyNode", pos);
-    }, [addNode, screenToFlowPosition]);
+    // ── Context menu handlers for each node ───────────────────────────
+    const makeNodeMenuProps = useCallback(
+        (nodeId: string) => ({
+            onBringToFront: () => setNodeZIndex(nodeId, "front"),
+            onSendToBack: () => setNodeZIndex(nodeId, "back"),
+            onDuplicate: () => duplicateNode(nodeId),
+            onDelete: () => deleteNodes([nodeId]),
+            disabled: isViewer,
+        }),
+        [setNodeZIndex, duplicateNode, deleteNodes, isViewer]
+    );
+
+    const cursorStyle = activeTool === "text" || activeTool === "sticky" ? "crosshair" : undefined;
+
+    // Render other users' selection highlight as a thin coloured ring
+    const selectionHighlights = others
+        .filter((o) => o.presence?.selectedNodeId)
+        .map((o) => ({ nodeId: o.presence.selectedNodeId!, color: o.info?.color ?? o.presence.color ?? "#6366f1" }));
 
     return (
         <div
             className="h-full w-full relative bg-slate-50"
             onMouseMove={onMouseMove}
             onMouseLeave={onMouseLeave}
+            style={{ cursor: cursorStyle }}
         >
             <BoardInfo boardId={boardId} />
-            <Participants />
+            <Participants onFollowUser={toggleFollow} followingId={followingId} />
             {!isViewer && (
                 <Toolbar
-                    onAddTextNode={onAddTextNode}
+                    activeTool={activeTool}
+                    onToolChange={setActiveTool}
                     onAddImageNode={onAddImageNode}
-                    onAddStickyNode={onAddStickyNode}
+                    onAddStickyNode={() => { }}
                     onUndo={undo}
                     onRedo={redo}
+                    snapEnabled={snapEnabled}
+                    onSnapToggle={() => setSnapEnabled((s) => !s)}
                 />
             )}
 
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
-                onNodesChange={setNodes}
-                onEdgesChange={setEdges}
-                onConnect={onConnect}
+                onNodesChange={isViewer ? undefined : setNodes}
+                onEdgesChange={isViewer ? undefined : setEdges}
+                onConnect={isViewer ? undefined : onConnect}
+                onPaneClick={onPaneClick}
+                onSelectionChange={onSelectionChange}
+                onMoveEnd={onMoveEnd}
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 selectionMode={SelectionMode.Partial}
+                selectionOnDrag={activeTool === "select"}
+                nodesDraggable={!isViewer}
+                nodesConnectable={!isViewer}
+                elementsSelectable={!isViewer}
+                snapToGrid={snapEnabled}
+                snapGrid={[20, 20]}
+                deleteKeyCode={null} // we handle Delete ourselves
                 fitView
                 fitViewOptions={{ padding: 0.2 }}
                 proOptions={{ hideAttribution: true }}
             >
-                <Background color="#94a3b8" gap={24} size={1.5} />
+                <Background color="#94a3b8" gap={snapEnabled ? 20 : 24} size={1.5} />
                 <Controls className="bg-white shadow-lg rounded-xl border" />
                 <MiniMap
                     className="!rounded-xl !border !shadow-lg"
@@ -244,9 +418,19 @@ export function Canvas({ boardId }: CanvasProps) {
                     zoomable
                 />
                 <Panel position="top-left" className="w-full h-full pointer-events-none">
-                    <CursorsPresence />
+                    <CursorsPresence selectionHighlights={selectionHighlights} />
                 </Panel>
             </ReactFlow>
+
+            {/* Following mode banner */}
+            {followingId !== null && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 pointer-events-none z-50">
+                    <div className="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                        <span className="animate-pulse w-2 h-2 rounded-full bg-white" />
+                        Following user · Press <kbd className="bg-blue-500 px-1 rounded ml-1">Esc</kbd> to stop
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

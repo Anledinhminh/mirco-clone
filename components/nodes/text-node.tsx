@@ -1,104 +1,109 @@
 "use client";
 
-import { memo, useCallback, useState, useRef, useEffect } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { memo, useCallback, useEffect, useState } from "react";
+import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { Color, TextStyle, FontSize } from "@tiptap/extension-text-style";
+import { Underline } from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
+import { Highlight } from "@tiptap/extension-highlight";
+import { RichTextToolbar } from "./rich-text-toolbar";
 import { cn } from "@/lib/utils";
 
 interface TextNodeData {
-    text: string;
+    html?: string;
+    text?: string;
     [key: string]: unknown;
 }
 
-export const TextNode = memo(function TextNode({
-    data,
-    selected,
-    id,
-}: NodeProps) {
+export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps) {
     const nodeData = data as TextNodeData;
-    const [isEditing, setIsEditing] = useState(false);
-    const [text, setText] = useState(nodeData.text ?? "");
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
 
-    useEffect(() => {
-        setText(nodeData.text ?? "");
-    }, [nodeData.text]);
+    // Prefer HTML content, fall back to plain text
+    const initialContent = nodeData.html ?? (nodeData.text ? `<p>${nodeData.text}</p>` : "<p>Double-click to edit…</p>");
 
-    useEffect(() => {
-        if (isEditing && textareaRef.current) {
-            textareaRef.current.focus();
-            textareaRef.current.select();
-        }
-    }, [isEditing]);
-
-    const handleDoubleClick = useCallback(() => {
-        setIsEditing(true);
-    }, []);
-
-    const handleBlur = useCallback(() => {
-        setIsEditing(false);
-        // Notify parent via custom node event
-        const event = new CustomEvent("nodeDataChange", {
-            bubbles: true,
-            detail: { id, data: { text } },
-        });
-        document.dispatchEvent(event);
-    }, [id, text]);
-
-    const handleKeyDown = useCallback(
-        (e: React.KeyboardEvent) => {
-            if (e.key === "Escape") {
-                setIsEditing(false);
-            }
-            // Prevent ReactFlow from capturing keyboard events while editing
-            e.stopPropagation();
+    const editor = useEditor({
+        extensions: [
+            StarterKit.configure({ heading: false }),
+            Color,
+            TextStyle,
+            FontSize,
+            Underline,
+            TextAlign.configure({ types: ["paragraph"] }),
+            Highlight.configure({ multicolor: true }),
+        ],
+        content: initialContent,
+        editorProps: {
+            attributes: {
+                class: "outline-none min-h-[60px] p-3 text-slate-800 text-sm leading-relaxed prose prose-sm max-w-none",
+            },
         },
-        []
-    );
+        onFocus: () => setIsFocused(true),
+        onBlur: ({ editor: ed }) => {
+            setIsFocused(false);
+            // Sync to Liveblocks
+            const event = new CustomEvent("nodeDataChange", {
+                bubbles: true,
+                detail: { id, data: { html: ed.getHTML(), text: ed.getText() } },
+            });
+            document.dispatchEvent(event);
+        },
+    });
+
+    // Sync external data changes (e.g. another user editing)
+    useEffect(() => {
+        if (!editor || editor.isFocused) return;
+        const newContent = nodeData.html ?? (nodeData.text ? `<p>${nodeData.text}</p>` : "");
+        if (newContent && newContent !== editor.getHTML()) {
+            editor.commands.setContent(newContent);
+        }
+    }, [nodeData.html, nodeData.text, editor]);
+
+    const stopPropagation = useCallback((e: React.KeyboardEvent) => {
+        // Don't let ReactFlow capture keyboard events while editing
+        e.stopPropagation();
+    }, []);
 
     return (
         <div
             className={cn(
-                "bg-white rounded-xl shadow-lg border-2 min-w-[180px] max-w-[400px] transition-all duration-150",
+                "bg-white rounded-xl shadow-lg border-2 min-w-[200px] overflow-visible transition-all duration-150 group",
                 selected ? "border-blue-500 shadow-blue-200 shadow-lg" : "border-slate-200 hover:border-slate-300"
             )}
-            onDoubleClick={handleDoubleClick}
+            style={{ height: "100%" }}
         >
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-[10px] px-3 py-1.5 flex items-center gap-1.5">
+            <NodeResizer
+                minWidth={200}
+                minHeight={100}
+                isVisible={selected}
+                lineClassName="border-blue-400"
+                handleClassName="!bg-white !border-2 !border-blue-400 !rounded !w-2 !h-2"
+            />
+            {/* Toolbar — floats above node when focused */}
+            {editor && isFocused && (
+                <div className="absolute -top-12 left-0 z-50">
+                    <RichTextToolbar editor={editor} />
+                </div>
+            )}
+
+            {/* Node header */}
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-[10px] px-3 py-1.5 flex items-center gap-1.5 cursor-grab active:cursor-grabbing">
                 <div className="w-2 h-2 rounded-full bg-white/40" />
-                <span className="text-white text-xs font-medium">Text</span>
+                <span className="text-white text-xs font-medium select-none">Text</span>
             </div>
 
-            {/* Content */}
-            <div className="p-3 min-h-[60px]">
-                {isEditing ? (
-                    <textarea
-                        ref={textareaRef}
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        onBlur={handleBlur}
-                        onKeyDown={handleKeyDown}
-                        className="w-full min-h-[80px] text-sm text-slate-800 resize-none outline-none border-none bg-transparent placeholder-slate-400"
-                        placeholder="Type markdown here... (double-click to edit)"
-                    />
-                ) : (
-                    <div className="prose prose-sm max-w-none text-slate-800 cursor-text select-none">
-                        {text ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-                        ) : (
-                            <p className="text-slate-400 italic text-sm">Double-click to edit…</p>
-                        )}
-                    </div>
-                )}
+            {/* Editor */}
+            <div onKeyDown={stopPropagation}>
+                <EditorContent editor={editor} />
             </div>
 
             {/* React Flow Handles */}
-            <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white" />
-            <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white" />
-            <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white" />
-            <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white" />
+            <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
         </div>
     );
 });
