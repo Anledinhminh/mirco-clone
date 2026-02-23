@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── CSS Theme variables (Tailwind v4 style) ── */
 @theme {
   --color-background: hsl(0 0% 100%);
