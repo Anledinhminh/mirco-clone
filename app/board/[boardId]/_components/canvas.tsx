@@ -549,6 +549,8 @@ export function Canvas({ boardId }: CanvasProps) {
                 deleteKeyCode={null} // we handle Delete ourselves
                 fitView
                 fitViewOptions={{ padding: 0.2 }}
+                minZoom={0.1}
+                maxZoom={5}
                 proOptions={{ hideAttribution: true }}
             >
                 <Background color={resolvedTheme === "dark" ? "#334155" : "#94a3b8"} gap={snapEnabled ? 20 : 24} size={1.5} />
