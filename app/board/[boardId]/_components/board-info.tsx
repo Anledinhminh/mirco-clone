@@ -50,18 +50,18 @@ export function BoardInfo({ boardId }: BoardInfoProps) {
     return (
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
             <Link href="/">
-                <div className="bg-white hover:bg-slate-50 rounded-xl px-3 py-2 flex items-center gap-2 transition-colors shadow border text-sm font-medium text-slate-600">
+                <div className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl px-3 py-2 flex items-center gap-2 transition-colors shadow border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300">
                     <ChevronLeft className="h-4 w-4" />
                     Back
                 </div>
             </Link>
-            <div className="bg-white rounded-xl px-3 py-2 flex items-center gap-2 shadow border">
-                <span className="text-sm font-semibold text-slate-800 truncate max-w-[200px]">
+            <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 flex items-center gap-2 shadow border border-slate-200 dark:border-slate-700">
+                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
                     {board?.title ?? "Untitled Board"}
                 </span>
                 <button
                     onClick={() => board && onOpen(boardId, board.title)}
-                    className="text-slate-400 hover:text-slate-700 transition-colors"
+                    className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                     title="Rename board"
                 >
                     <Pencil className="h-3.5 w-3.5" />
@@ -69,7 +69,7 @@ export function BoardInfo({ boardId }: BoardInfoProps) {
             </div>
             <button
                 onClick={handleExport}
-                className="bg-white rounded-xl px-3 py-2 flex items-center justify-center shadow border hover:bg-slate-50 transition-colors text-slate-600"
+                className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 flex items-center justify-center shadow border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300"
                 title="Export to PNG"
             >
                 <Download className="h-4 w-4" />

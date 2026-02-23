@@ -108,7 +108,14 @@ miro-clone/
 | 🖱️ Live Cursors (Liveblocks) | ✅ |
 | 🔄 Real-time Node/Edge Sync | ✅ |
 | 📝 TextNode with Markdown | ✅ |
-| 🖼️ ImageNode with URL | ✅ |
+| 🖼️ ImageNode with URL/Paste | ✅ |
+| 📌 Sticky Notes | ✅ |
+| 🔲 Shape Nodes (Rect/Circle/Triangle) | ✅ |
+| 🖍️ Freehand Pen Drawing | ✅ |
+| 🔗 Customizable Connections | ✅ |
+| 🌙 Dark Mode Support | ✅ |
+| 📥 Export to PNG | ✅ |
 | ↩️ Undo/Redo (Ctrl+Z/Y) | ✅ |
 | 🗺️ MiniMap + Controls | ✅ |
 | 👥 Participant Avatars | ✅ |
+| 👁️ Following Mode | ✅ |

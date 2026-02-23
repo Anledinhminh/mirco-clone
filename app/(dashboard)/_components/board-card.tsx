@@ -45,7 +45,7 @@ export function BoardCard({
 
     return (
         <Link href={`/board/${id}`}>
-            <div className="group aspect-[100/127] border rounded-xl flex flex-col justify-between overflow-hidden hover:shadow-lg transition-shadow duration-200 bg-white cursor-pointer">
+            <div className="group aspect-[100/127] border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between overflow-hidden hover:shadow-lg transition-shadow duration-200 bg-white dark:bg-slate-900 cursor-pointer">
                 {/* Board thumbnail */}
                 <div className="relative flex-1 bg-slate-100">
                     <Image
@@ -61,9 +61,9 @@ export function BoardCard({
                     {/* Actions menu */}
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <BoardCardActions id={id} title={title} side="right">
-                            <button className="h-7 w-7 bg-white/90 rounded-full flex items-center justify-center shadow hover:bg-white transition-colors"
+                            <button className="h-7 w-7 bg-white/90 dark:bg-slate-800/90 rounded-full flex items-center justify-center shadow hover:bg-white dark:hover:bg-slate-800 transition-colors"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                                <MoreHorizontal className="h-4 w-4 text-slate-600" />
+                                <MoreHorizontal className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                             </button>
                         </BoardCardActions>
                     </div>
@@ -82,8 +82,8 @@ export function BoardCard({
                     </button>
                 </div>
                 {/* Info row */}
-                <div className="relative bg-white p-3">
-                    <p className="text-sm font-medium truncate text-slate-800">{title}</p>
+                <div className="relative bg-white dark:bg-slate-900 p-3">
+                    <p className="text-sm font-medium truncate text-slate-800 dark:text-slate-200">{title}</p>
                     <p className="text-xs text-muted-foreground truncate">
                         {label} · {formatDistanceToNow(createdAtDate, { addSuffix: true })}
                     </p>

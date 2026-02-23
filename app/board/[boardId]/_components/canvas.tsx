@@ -30,6 +30,7 @@ import {
     useHistory,
 } from "@/liveblocks.config";
 import { useUser } from "@clerk/nextjs";
+import { useTheme } from "next-themes";
 import { CursorsPresence } from "./cursors-presence";
 import { Toolbar, type ActiveTool } from "./toolbar";
 import { BoardInfo } from "./board-info";
@@ -40,6 +41,7 @@ import { StickyNoteNode } from "@/components/nodes/sticky-note-node";
 import { ShapeNode } from "@/components/nodes/shape-node";
 import { PathNode } from "@/components/nodes/path-node";
 import { NodeContextMenu } from "@/components/canvas/node-context-menu";
+import { CustomEdge } from "@/components/edges/custom-edge";
 import { useBoardRole } from "@/hooks/use-board-role";
 
 const nodeTypes = {
@@ -50,10 +52,13 @@ const nodeTypes = {
     pathNode: PathNode,
 };
 
+const edgeTypes = {
+    customEdge: CustomEdge,
+};
+
 const defaultEdgeOptions = {
-    type: "smoothstep",
+    type: "customEdge",
     markerEnd: { type: MarkerType.ArrowClosed, color: "#6366f1" },
-    style: { stroke: "#6366f1", strokeWidth: 2 },
 };
 
 interface CanvasProps {
@@ -62,6 +67,7 @@ interface CanvasProps {
 
 export function Canvas({ boardId }: CanvasProps) {
     const { user } = useUser();
+    const { resolvedTheme } = useTheme();
     const [, updateMyPresence] = useMyPresence();
     const self = useSelf();
     const { undo, redo } = useHistory();
@@ -118,9 +124,8 @@ export function Canvas({ boardId }: CanvasProps) {
         const newEdge: Edge = {
             ...connection,
             id: `e-${Date.now()}`,
-            type: "smoothstep",
+            type: "customEdge",
             markerEnd: { type: MarkerType.ArrowClosed, color: "#6366f1" },
-            style: { stroke: "#6366f1", strokeWidth: 2 },
         } as Edge;
         storage.set("edges", addEdge(newEdge, current) as unknown[]);
     }, []);
@@ -145,7 +150,7 @@ export function Canvas({ boardId }: CanvasProps) {
                 data: { ...defaultData, ...initialData },
                 style: { width: type === "textNode" ? 220 : type === "shapeNode" ? 120 : type === "pathNode" ? undefined : 260 },
             };
-            if (type === "shapeNode") newNode.style.height = 120; // default square
+            if (type === "shapeNode" && newNode.style) newNode.style.height = 120; // default square
 
             storage.set("nodes", [...existing, newNode] as unknown[]);
             return newNode.id;
@@ -215,15 +220,43 @@ export function Canvas({ boardId }: CanvasProps) {
         }
     }, []);
 
-    // ── Sync node data changes ───────────────────────────────────────
+    const updateEdgeData = useMutation(({ storage }, id: string, data: any) => {
+        const currentEdges = (storage.get("edges") as unknown as Edge[]) ?? [];
+        const index = currentEdges.findIndex((e) => e.id === id);
+        if (index !== -1) {
+            const edge = currentEdges[index];
+            const newEdges = [...currentEdges];
+            newEdges[index] = { ...edge, data: { ...edge.data, ...data } };
+            storage.set("edges", newEdges as unknown[]);
+        }
+    }, []);
+
+    // ── Sync node/edge data changes ──────────────────────────────────
     useEffect(() => {
-        const handler = (e: CustomEvent) => {
+        const nodeHandler = (e: CustomEvent) => {
             if (isViewer) return;
             updateNodeData(e.detail.id, e.detail.data);
         };
-        document.addEventListener("nodeDataChange", handler as EventListener);
-        return () => document.removeEventListener("nodeDataChange", handler as EventListener);
-    }, [updateNodeData, isViewer]);
+        const edgeHandler = (e: CustomEvent) => {
+            if (isViewer) return;
+            updateEdgeData(e.detail.id, e.detail.data);
+        };
+        const edgeDeleteHandler = (e: CustomEvent) => {
+            if (isViewer) return;
+            // Delete edge logic (we can reuse deleteNodes because it also filters edges)
+            deleteNodes([e.detail.id]);
+        };
+
+        document.addEventListener("nodeDataChange", nodeHandler as EventListener);
+        document.addEventListener("edgeDataChange", edgeHandler as EventListener);
+        document.addEventListener("edgeDelete", edgeDeleteHandler as EventListener);
+
+        return () => {
+            document.removeEventListener("nodeDataChange", nodeHandler as EventListener);
+            document.removeEventListener("edgeDataChange", edgeHandler as EventListener);
+            document.removeEventListener("edgeDelete", edgeDeleteHandler as EventListener);
+        };
+    }, [updateNodeData, updateEdgeData, deleteNodes, isViewer]);
 
     // ── Selection → presence sync ────────────────────────────────────
     const onSelectionChange = useCallback(
@@ -466,7 +499,7 @@ export function Canvas({ boardId }: CanvasProps) {
 
     return (
         <div
-            className="h-full w-full relative bg-slate-50 touch-none"
+            className="h-full w-full relative bg-slate-50 dark:bg-slate-950 touch-none"
             onMouseMove={onMouseMove}
             onMouseLeave={onMouseLeave}
             onPointerDown={onPointerDown}
@@ -500,6 +533,7 @@ export function Canvas({ boardId }: CanvasProps) {
                 onSelectionChange={onSelectionChange}
                 onMoveEnd={onMoveEnd}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 selectionMode={SelectionMode.Partial}
                 panOnDrag={spaceHeld}/* Space held → LMB pans */
@@ -517,12 +551,12 @@ export function Canvas({ boardId }: CanvasProps) {
                 fitViewOptions={{ padding: 0.2 }}
                 proOptions={{ hideAttribution: true }}
             >
-                <Background color="#94a3b8" gap={snapEnabled ? 20 : 24} size={1.5} />
-                <Controls className="bg-white shadow-lg rounded-xl border" />
+                <Background color={resolvedTheme === "dark" ? "#334155" : "#94a3b8"} gap={snapEnabled ? 20 : 24} size={1.5} />
+                <Controls className="bg-white dark:bg-slate-800 shadow-lg rounded-xl border dark:border-slate-700" />
                 <MiniMap
-                    className="!rounded-xl !border !shadow-lg"
-                    nodeColor="#6366f1"
-                    maskColor="rgba(148,163,184,0.1)"
+                    className="!rounded-xl !border !shadow-lg dark:!bg-slate-900 dark:!border-slate-700"
+                    nodeColor={resolvedTheme === "dark" ? "#4f46e5" : "#6366f1"}
+                    maskColor={resolvedTheme === "dark" ? "rgba(15,23,42,0.6)" : "rgba(148,163,184,0.1)"}
                     pannable
                     zoomable
                 />

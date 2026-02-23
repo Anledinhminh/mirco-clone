@@ -34,7 +34,7 @@ export function Participants({ onFollowUser, followingId }: ParticipantsProps) {
                                         "h-9 w-9 rounded-full border-2 flex items-center justify-center text-white text-xs font-bold shadow-sm transition-all hover:scale-110 relative",
                                         isFollowing && "ring-2 ring-offset-1 ring-blue-400 scale-110"
                                     )}
-                                    style={{ background: color, borderColor: "white" }}
+                                    style={{ background: color, borderColor: "var(--tw-prose-invert, white)" }}
                                     title={isFollowing ? `Stop following ${name}` : `Follow ${name}`}
                                 >
                                     {name[0].toUpperCase()}
@@ -56,7 +56,7 @@ export function Participants({ onFollowUser, followingId }: ParticipantsProps) {
                 })}
 
                 {hasMore && (
-                    <div className="h-9 w-9 rounded-full border-2 border-white bg-slate-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                    <div className="h-9 w-9 rounded-full border-2 border-white dark:border-slate-800 bg-slate-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
                         +{others.length - MAX_SHOWN}
                     </div>
                 )}

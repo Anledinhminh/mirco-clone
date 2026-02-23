@@ -21,6 +21,11 @@
 | 📝 Rich Text Node | Tiptap editor: Bold, Italic, Underline, Font size, Color, Alignment |
 | 🖼️ Image Node | URL paste + Ctrl+V screenshot paste (base64) |
 | 📌 Sticky Note | Markdown rendering, 4 colors (yellow/blue/pink/green) |
+| 🔲 Shape Node | Rectangle, Circle, Triangle, Diamond with text support |
+| 🖍️ Pen Tool | Freehand drawing using `perfect-freehand` with real-time sync |
+| 🔗 Custom Connections| Edges with editable text labels and context menu styling (Bezier, Step, Straight) |
+| 🌙 Dark Mode | Sáng/Tối theme toàn ứng dụng thông qua `next-themes` |
+| 📥 Export to PNG | Tải xuống canvas hiện tại dạng PNG qua `html-to-image` |
 | 🔧 Node Resize | Kéo handle để thay đổi kích thước (NodeResizer) |
 | ✂️ Context Menu | Chuột phải: Bring to front, Send to back, Duplicate, Delete |
 | ⌨️ Keyboard Shortcuts | Delete, Ctrl+D (duplicate), Ctrl+[/] (z-index), Esc |
@@ -31,7 +36,7 @@
 | ↩️ Undo/Redo | Ctrl+Z / Ctrl+Y qua Liveblocks history |
 | 👥 Participants | Avatar bubble + follow/unfollow UI |
 | 🛡️ RBAC | Owner / Editor / Viewer roles |
-| 📋 Click-to-place | Click toolbar Text/Sticky → click canvas đặt tại vị trí |
+| 📋 Click-to-place | Click toolbar Text/Sticky/Shape → click canvas đặt tại vị trí |
 
 ---
 
@@ -74,23 +79,28 @@ d:\Manro\miro-clone\
 │   │   ├── page.tsx             ← RoomProvider + ClientSideSuspense
 │   │   └── _components/
 │   │       ├── canvas.tsx       ← ⭐ CORE: ReactFlow + Liveblocks + all features
-│   │       ├── toolbar.tsx      ← Bottom bar: Select/Text/Image/Sticky/Snap/Undo/Redo
+│   │       ├── toolbar.tsx      ← Bottom bar: Select/Text/Image/Sticky/Shape/Pen/Snap/Undo/Redo
 │   │       ├── participants.tsx ← Avatar bubbles + following mode
 │   │       ├── cursors-presence.tsx ← Live cursors with smooth CSS transition
-│   │       ├── board-info.tsx   ← Title + rename + back
+│   │       ├── board-info.tsx   ← Title + rename + back + export
 │   │       └── canvas-wrapper.tsx, board-loading.tsx
 │   └── api/liveblocks-auth/     ← Liveblocks token endpoint
 │
 ├── components/
+│   ├── edges/
+│   │   └── custom-edge.tsx      ← Editable edge with context menu
 │   ├── nodes/
 │   │   ├── text-node.tsx        ← Tiptap editor + NodeResizer
 │   │   ├── image-node.tsx       ← URL/paste image + NodeResizer
 │   │   ├── sticky-note-node.tsx ← Markdown sticky + NodeResizer
+│   │   ├── shape-node.tsx       ← Square, Circle, Triangle, Diamond
+│   │   ├── path-node.tsx        ← Freehand SVG drawing paths
 │   │   └── rich-text-toolbar.tsx ← Floating toolbar (bold/italic/color/size)
 │   ├── canvas/
 │   │   └── node-context-menu.tsx ← Right-click menu
 │   ├── ui/                      ← Radix wrappers (dialog, toast, context-menu, etc.)
 │   ├── rename-modal.tsx, confirm-modal.tsx
+│   └── theme-toggle.tsx         ← Navbar dark mode toggle
 │
 ├── hooks/
 │   ├── use-board-role.ts        ← RBAC: owner/editor/viewer
@@ -151,10 +161,6 @@ npm run dev           # Terminal 2
 
 ## 8. Gợi Ý Phát Triển Tiếp
 
-1. **Shape Nodes** — Hình chữ nhật, tròn, tam giác, mũi tên
-2. **Freehand Drawing** — Pen tool với SVG paths
-3. **Connection Labels** — Click vào edge → gõ label
-4. **Dark Mode** — Toggle sáng/tối
-5. **Board Templates** — Retrospective, Brainstorm, Flowchart
-6. **Export PNG/PDF** — Xuất canvas ra file
-7. **Cloud Image Upload** — Thay base64 bằng cloud storage
+1. **Board Templates** — Retrospective, Brainstorm, Flowchart (Thêm template vào canvas)
+2. **Cloud Image Upload** — Thay đổi logic upload qua AWS S3/Cloudinary thay vì Base64 để tiết kiệm Storage
+3. **Advanced Permissions** — Cấp quyền riêng lẻ cho từng người dùng (share link via email invitation)

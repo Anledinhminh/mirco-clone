@@ -2,6 +2,7 @@
 
 import { OrganizationSwitcher, UserButton, useOrganization } from "@clerk/nextjs";
 import { SearchInput } from "./search-input";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Navbar() {
     const { organization } = useOrganization();
@@ -19,6 +20,7 @@ export function Navbar() {
                     }}
                 />
             </div>
+            <ThemeToggle />
             <UserButton />
         </div>
     );

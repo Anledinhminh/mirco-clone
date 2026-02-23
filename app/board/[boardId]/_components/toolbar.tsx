@@ -32,8 +32,8 @@ function ToolButton({
             className={cn(
                 "p-2 rounded-xl flex flex-col items-center justify-center gap-1 w-14 transition-all duration-150 select-none",
                 isActive
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                    : "text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/50"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 active:scale-95"
             )}
         >
             {icon}
@@ -43,7 +43,7 @@ function ToolButton({
 }
 
 function Divider() {
-    return <div className="w-px h-10 bg-slate-200 mx-0.5" />;
+    return <div className="w-px h-10 bg-slate-200 dark:bg-slate-700 mx-0.5" />;
 }
 
 export function Toolbar({
@@ -52,7 +52,7 @@ export function Toolbar({
 }: ToolbarProps) {
     return (
         <div className="absolute left-1/2 bottom-6 -translate-x-1/2 z-10 pointer-events-auto">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-1.5 flex items-center gap-0.5">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-1.5 flex items-center gap-0.5">
                 <ToolButton
                     icon={<MousePointer2 className="h-5 w-5" />}
                     label="Select"
@@ -110,9 +110,9 @@ export function Toolbar({
 
             {/* Hint when placement tool is active */}
             {activeTool !== "select" && (
-                <p className="text-center text-xs text-slate-500 mt-2 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm select-none">
+                <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm select-none">
                     Click on canvas to place ·{" "}
-                    <kbd className="font-semibold">Esc</kbd> to cancel
+                    <kbd className="font-semibold text-slate-700 dark:text-slate-300">Esc</kbd> to cancel
                 </p>
             )}
         </div>
