@@ -1,9 +1,9 @@
 "use client";
 
-import { Type, Image, MousePointer2, Undo2, Redo2, StickyNote, Grid2x2 } from "lucide-react";
+import { Type, Image, MousePointer2, Undo2, Redo2, StickyNote, Grid2x2, Square, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ActiveTool = "select" | "text" | "image" | "sticky";
+export type ActiveTool = "select" | "text" | "image" | "sticky" | "shape" | "pencil";
 
 interface ToolbarProps {
     activeTool: ActiveTool;
@@ -80,6 +80,20 @@ export function Toolbar({
                     title="Sticky note — click canvas to place (S)"
                     onClick={() => onToolChange(activeTool === "sticky" ? "select" : "sticky")}
                     isActive={activeTool === "sticky"}
+                />
+                <ToolButton
+                    icon={<Square className="h-5 w-5" />}
+                    label="Shape"
+                    title="Shape — click canvas to place (R)"
+                    onClick={() => onToolChange(activeTool === "shape" ? "select" : "shape")}
+                    isActive={activeTool === "shape"}
+                />
+                <ToolButton
+                    icon={<Pencil className="h-5 w-5" />}
+                    label="Pen"
+                    title="Freehand drawing (P)"
+                    onClick={() => onToolChange(activeTool === "pencil" ? "select" : "pencil")}
+                    isActive={activeTool === "pencil"}
                 />
                 <Divider />
                 <ToolButton

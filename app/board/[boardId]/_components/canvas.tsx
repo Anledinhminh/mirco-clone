@@ -37,6 +37,8 @@ import { Participants } from "./participants";
 import { TextNode } from "@/components/nodes/text-node";
 import { ImageNode } from "@/components/nodes/image-node";
 import { StickyNoteNode } from "@/components/nodes/sticky-note-node";
+import { ShapeNode } from "@/components/nodes/shape-node";
+import { PathNode } from "@/components/nodes/path-node";
 import { NodeContextMenu } from "@/components/canvas/node-context-menu";
 import { useBoardRole } from "@/hooks/use-board-role";
 
@@ -44,6 +46,8 @@ const nodeTypes = {
     textNode: TextNode,
     imageNode: ImageNode,
     stickyNode: StickyNoteNode,
+    shapeNode: ShapeNode,
+    pathNode: PathNode,
 };
 
 const defaultEdgeOptions = {
@@ -69,6 +73,8 @@ export function Canvas({ boardId }: CanvasProps) {
     const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
     const [followingId, setFollowingId] = useState<number | null>(null);
     const [spaceHeld, setSpaceHeld] = useState(false);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const currentPathIdRef = useRef<string | null>(null);
     const followingRef = useRef(followingId);
     followingRef.current = followingId;
 
@@ -122,23 +128,27 @@ export function Canvas({ boardId }: CanvasProps) {
     const addNode = useMutation(
         (
             { storage },
-            type: "textNode" | "imageNode" | "stickyNode",
+            type: "textNode" | "imageNode" | "stickyNode" | "shapeNode" | "pathNode",
             position: { x: number; y: number },
             initialData?: Record<string, unknown>
         ) => {
             const existing = (storage.get("nodes") as unknown as Node[]) ?? [];
             const defaultData =
-                type === "textNode" || type === "stickyNode"
-                    ? { html: "<p>Type here…</p>", text: "" }
-                    : { url: "" };
+                type === "textNode" || type === "stickyNode" || type === "shapeNode"
+                    ? { html: "<p>Type here…</p>", text: "", shapeType: "rectangle" }
+                    : type === "pathNode" ? { points: [] } : { url: "" };
+
             const newNode: Node = {
                 id: `node-${Date.now()}`,
                 type,
                 position,
                 data: { ...defaultData, ...initialData },
-                style: { width: type === "textNode" ? 220 : 260 },
+                style: { width: type === "textNode" ? 220 : type === "shapeNode" ? 120 : type === "pathNode" ? undefined : 260 },
             };
+            if (type === "shapeNode") newNode.style.height = 120; // default square
+
             storage.set("nodes", [...existing, newNode] as unknown[]);
+            return newNode.id;
         },
         []
     );
@@ -192,6 +202,19 @@ export function Canvas({ boardId }: CanvasProps) {
         }
     }, []);
 
+    // Helper for fast point pushing without a full node copy (good for drawing performance)
+    const pushPointToPath = useMutation(({ storage }, id: string, point: [number, number, number]) => {
+        const currentNodes = (storage.get("nodes") as unknown as Node[]) ?? [];
+        const index = currentNodes.findIndex((n) => n.id === id);
+        if (index !== -1) {
+            const node = currentNodes[index];
+            const points = [...((node.data.points as any[]) || []), point];
+            const newNodes = [...currentNodes];
+            newNodes[index] = { ...node, data: { ...node.data, points } };
+            storage.set("nodes", newNodes as unknown[]);
+        }
+    }, []);
+
     // ── Sync node data changes ───────────────────────────────────────
     useEffect(() => {
         const handler = (e: CustomEvent) => {
@@ -224,6 +247,8 @@ export function Canvas({ boardId }: CanvasProps) {
 
     const onMouseLeave = useCallback(() => {
         updateMyPresence({ cursor: null });
+        setIsDrawing(false);
+        currentPathIdRef.current = null;
     }, [updateMyPresence]);
 
     // ── Viewport broadcast (for following mode) ───────────────────────
@@ -333,10 +358,49 @@ export function Canvas({ boardId }: CanvasProps) {
                 const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
                 addNode("stickyNode", pos);
                 setActiveTool("select");
+            } else if (activeTool === "shape") {
+                const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+                addNode("shapeNode", pos, { shapeType: "rectangle" });
+                setActiveTool("select");
             }
         },
         [activeTool, isViewer, screenToFlowPosition, addNode]
     );
+
+    // ── Freehand drawing handlers ──────────────────────────────────────
+    const onPointerDown = useCallback((e: React.PointerEvent) => {
+        if (activeTool !== "pencil" || isViewer || spaceHeld || e.button !== 0) return;
+
+        e.preventDefault();
+        const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+
+        // Start a new path node
+        // We set the node position to the first point. 
+        // The path points are relative to the viewport right now, 
+        // but PathNode will translate them relative to its bounding box.
+        const id = addNode("pathNode", pos, {
+            points: [[pos.x, pos.y, e.pressure]],
+            color: self?.info?.color ?? "#0f172a"
+        });
+
+        currentPathIdRef.current = id;
+        setIsDrawing(true);
+    }, [activeTool, isViewer, spaceHeld, screenToFlowPosition, addNode, self]);
+
+    const onPointerMove = useCallback((e: React.PointerEvent) => {
+        if (!isDrawing || !currentPathIdRef.current) return;
+
+        // Push points as we drag
+        const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        pushPointToPath(currentPathIdRef.current, [pos.x, pos.y, e.pressure]);
+    }, [isDrawing, screenToFlowPosition, pushPointToPath]);
+
+    const onPointerUp = useCallback(() => {
+        if (isDrawing) {
+            setIsDrawing(false);
+            currentPathIdRef.current = null;
+        }
+    }, [isDrawing]);
 
     // ── Ctrl+V Image Paste ────────────────────────────────────────────
     useEffect(() => {
@@ -391,7 +455,7 @@ export function Canvas({ boardId }: CanvasProps) {
     // Cursor: Space held = grab, placement tool = crosshair, default = pointer
     const cursorStyle = spaceHeld
         ? "grab"
-        : activeTool === "text" || activeTool === "sticky"
+        : activeTool === "text" || activeTool === "sticky" || activeTool === "shape" || activeTool === "pencil"
             ? "crosshair"
             : undefined;
 
@@ -402,9 +466,13 @@ export function Canvas({ boardId }: CanvasProps) {
 
     return (
         <div
-            className="h-full w-full relative bg-slate-50"
+            className="h-full w-full relative bg-slate-50 touch-none"
             onMouseMove={onMouseMove}
             onMouseLeave={onMouseLeave}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
             style={{ cursor: cursorStyle }}
         >
             <BoardInfo boardId={boardId} />
@@ -439,9 +507,9 @@ export function Canvas({ boardId }: CanvasProps) {
                 panOnScroll/* Scroll wheel = pan (Miro style) */
                 zoomOnScroll={false}/* Ctrl+scroll = zoom (set below) */
                 zoomOnPinch/* Pinch to zoom on trackpad */
-                nodesDraggable={!isViewer && !spaceHeld}/* Can't drag node while panning */
-                nodesConnectable={!isViewer}
-                elementsSelectable={!isViewer && !spaceHeld}
+                nodesDraggable={!isViewer && !spaceHeld && activeTool !== "pencil"}/* Can't drag node while panning or drawing */
+                nodesConnectable={!isViewer && activeTool !== "pencil"}
+                elementsSelectable={!isViewer && !spaceHeld && activeTool !== "pencil"}
                 snapToGrid={snapEnabled}
                 snapGrid={[20, 20]}
                 deleteKeyCode={null} // we handle Delete ourselves
