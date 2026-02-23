@@ -68,6 +68,7 @@ export function Canvas({ boardId }: CanvasProps) {
     const [snapEnabled, setSnapEnabled] = useState(false);
     const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
     const [followingId, setFollowingId] = useState<number | null>(null);
+    const [spaceHeld, setSpaceHeld] = useState(false);
     const followingRef = useRef(followingId);
     followingRef.current = followingId;
 
@@ -248,9 +249,24 @@ export function Canvas({ boardId }: CanvasProps) {
         setFollowingId((prev) => (prev === connectionId ? null : connectionId));
     }, []);
 
-    // ── Keyboard shortcuts ────────────────────────────────────────────
+    // ── Keyboard shortcuts + Space-to-pan ──────────────────────────────
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Space = pan mode (Miro style)
+            if (e.code === "Space" && !e.repeat) {
+                const target = e.target as HTMLElement;
+                const isEditing =
+                    target.tagName === "INPUT" ||
+                    target.tagName === "TEXTAREA" ||
+                    target.isContentEditable ||
+                    target.closest(".ProseMirror");
+                if (!isEditing) {
+                    e.preventDefault();
+                    setSpaceHeld(true);
+                }
+                return;
+            }
+
             const target = e.target as HTMLElement;
             const isEditing =
                 target.tagName === "INPUT" ||
@@ -285,8 +301,24 @@ export function Canvas({ boardId }: CanvasProps) {
                 if (selectedNodeIds.length > 0) setNodeZIndex(selectedNodeIds[0], "back");
             }
         };
+
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.code === "Space") {
+                setSpaceHeld(false);
+            }
+        };
+
+        // If window loses focus while Space held, reset
+        const handleBlur = () => setSpaceHeld(false);
+
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        window.addEventListener("keyup", handleKeyUp);
+        window.addEventListener("blur", handleBlur);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("keyup", handleKeyUp);
+            window.removeEventListener("blur", handleBlur);
+        };
     }, [undo, redo, selectedNodeIds, deleteNodes, duplicateNode, setNodeZIndex, isViewer]);
 
     // ── Click-to-place on pane ─────────────────────────────────────────
@@ -356,7 +388,12 @@ export function Canvas({ boardId }: CanvasProps) {
         [setNodeZIndex, duplicateNode, deleteNodes, isViewer]
     );
 
-    const cursorStyle = activeTool === "text" || activeTool === "sticky" ? "crosshair" : undefined;
+    // Cursor: Space held = grab, placement tool = crosshair, default = pointer
+    const cursorStyle = spaceHeld
+        ? "grab"
+        : activeTool === "text" || activeTool === "sticky"
+            ? "crosshair"
+            : undefined;
 
     // Render other users' selection highlight as a thin coloured ring
     const selectionHighlights = others
@@ -397,10 +434,14 @@ export function Canvas({ boardId }: CanvasProps) {
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 selectionMode={SelectionMode.Partial}
-                selectionOnDrag={activeTool === "select"}
-                nodesDraggable={!isViewer}
+                panOnDrag={spaceHeld}/* Space held → LMB pans */
+                selectionOnDrag={!spaceHeld && activeTool === "select"}/* Default: drag to box-select */
+                panOnScroll/* Scroll wheel = pan (Miro style) */
+                zoomOnScroll={false}/* Ctrl+scroll = zoom (set below) */
+                zoomOnPinch/* Pinch to zoom on trackpad */
+                nodesDraggable={!isViewer && !spaceHeld}/* Can't drag node while panning */
                 nodesConnectable={!isViewer}
-                elementsSelectable={!isViewer}
+                elementsSelectable={!isViewer && !spaceHeld}
                 snapToGrid={snapEnabled}
                 snapGrid={[20, 20]}
                 deleteKeyCode={null} // we handle Delete ourselves
