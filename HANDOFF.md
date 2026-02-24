@@ -1,6 +1,6 @@
 # 📋 Tài Liệu Bàn Giao – Miro Clone
 
-> **Ngày cập nhật:** 2026-02-23  
+> **Ngày cập nhật:** 2026-02-24  
 > **Project path:** `d:\Manro\miro-clone`  
 > **GitHub:** [https://github.com/Anledinhminh/mirco-clone](https://github.com/Anledinhminh/mirco-clone)
 
@@ -18,8 +18,8 @@
 | 🎨 Infinite Canvas | React Flow với zoom/pan/minimap |
 | 🖱️ Live Cursors | Cursor real-time + smooth animation (80ms transition) |
 | 🔄 Real-time Sync | Nodes & Edges đồng bộ qua Liveblocks storage |
-| 📝 Rich Text Node | Tiptap editor: Bold, Italic, Underline, Font size, Color, Alignment |
-| 🖼️ Image Node | URL paste + Ctrl+V screenshot paste (base64) |
+| 📝 Rich Text Node | Tiptap editor: Bold, Italic, Underline, Font size (custom extension), Color, Alignment. Seamless UI without headers. |
+| 🖼️ Image Node | Seamless URL input + Ctrl+V screenshot paste (base64) with invisible bounding boxes |
 | 📌 Sticky Note | Markdown rendering, 4 colors (yellow/blue/pink/green) |
 | 🔲 Shape Node | Rectangle, Circle, Triangle, Diamond with text support |
 | 🖍️ Pen Tool | Freehand drawing using `perfect-freehand` with real-time sync |
@@ -119,6 +119,7 @@ d:\Manro\miro-clone\
 | Tiptap SSR hydration | Tiptap v3 yêu cầu `immediatelyRender: false` | Thêm option vào `useEditor()` |
 | ClientSideSuspense render function | Liveblocks v3 không dùng render function `{() => ...}` | Đổi sang direct JSX children |
 | `@tiptap/extension-text-style` no default export | Tiptap v3 chỉ có named exports | `import { TextStyle, FontSize, Color }` |
+| Tiptap FontSize missing | Không có official extension cho FontSize | Tự tạo `tiptap-fontsize-extension.ts` |
 | Storage type error | `unknown[]` không satisfy `LsonObject` | Đổi sang `any[]` |
 | Unused lucide icons | `BringToFront`/`SendToBack` không tồn tại | Xóa khỏi import |
 
