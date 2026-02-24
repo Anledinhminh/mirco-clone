@@ -120,6 +120,7 @@ d:\Manro\miro-clone\
 | ClientSideSuspense render function | Liveblocks v3 không dùng render function `{() => ...}` | Đổi sang direct JSX children |
 | `@tiptap/extension-text-style` no default export | Tiptap v3 chỉ có named exports | `import { TextStyle, FontSize, Color }` |
 | Tiptap FontSize missing | Không có official extension cho FontSize | Tự tạo `tiptap-fontsize-extension.ts` |
+| Tiptap Toolbar focus loss | Toolbar auto unmount khi click `<select>` vì mất focus editor. Nút bấm bị event drag của ReactFlow chặn | Bọc class `nodrag` cho editor & toolbar, dùng `requestAnimationFrame` + `containerRef.contains` để giữ toolbar khi focus ở select, đổi `onClick` sang `onPointerDown`. |
 | Edge inflexibility | Edges không cho reconnect, click bị path ẩn đè mất | Bật `ConnectionMode.Loose`, thêm `onReconnect` và dùng `interactionWidth` của BaseEdge |
 | Storage type error | `unknown[]` không satisfy `LsonObject` | Đổi sang `any[]` |
 | Unused lucide icons | `BringToFront`/`SendToBack` không tồn tại | Xóa khỏi import |
