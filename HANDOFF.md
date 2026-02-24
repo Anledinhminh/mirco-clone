@@ -23,7 +23,7 @@
 | 📌 Sticky Note | Markdown rendering, 4 colors (yellow/blue/pink/green) |
 | 🔲 Shape Node | Rectangle, Circle, Triangle, Diamond with text support |
 | 🖍️ Pen Tool | Freehand drawing using `perfect-freehand` with real-time sync |
-| 🔗 Ultimate Connections | Dynamic Floating Edges (kết nối đường đi tự động bám theo giao điểm gần nhất của viền Shape), Live Connection Line (gợi ý màu sắc nét gạch đứt khi di chuột), và Quick-Create (kéo lưới ra khoảng trống tự động sinh Node mới). |
+| 🔗 Ultimate Connections | Smart Routing Edges (tự động nối qua đích là trung điểm gần nhất của viền Shape, bẻ cong mềm mại 16px để tránh gấp khúc lộn xộn), Live Connection Line (nét đứt kéo chuột động), và Quick-Create (kéo lưới qua khoảng trống tự động sinh Node mới). |
 | 🌙 Dark Mode | Sáng/Tối theme toàn ứng dụng thông qua `next-themes` |
 | 📥 Export to PNG | Tải xuống canvas hiện tại dạng PNG qua `html-to-image` |
 | 🔧 Node Resize | Kéo handle để thay đổi kích thước (NodeResizer) |
@@ -121,6 +121,7 @@ d:\Manro\miro-clone\
 | `@tiptap/extension-text-style` no default export | Tiptap v3 chỉ có named exports | `import { TextStyle, FontSize, Color }` |
 | Tiptap FontSize missing | Không có official extension cho FontSize | Tự tạo `tiptap-fontsize-extension.ts` |
 | Tiptap Toolbar focus loss | Toolbar auto unmount khi click `<select>` vì mất focus editor. Nút bấm bị event drag của ReactFlow chặn | Bọc class `nodrag` cho editor & toolbar, dùng `requestAnimationFrame` + `containerRef.contains` để giữ toolbar khi focus ở select, đổi `onClick` sang `onPointerDown`. |
+| Edge clipping & overlapping | Lưới kẻ ô vuông thỉnh thoảng đâm xuyên qua góc hộp hình chữ nhật hoặc tự sinh nếp gấp thừa | Đổi logic `getEdgeParams` từ trượt viền (sliding) sang "Smart side-centers" (khoảng cách Euclidean ngắn nhất giữa trung điểm 4 cạnh) và đặt `borderRadius: 16`. |
 | Edge inflexibility | Edges không cho reconnect, click bị path ẩn đè mất | Bật `ConnectionMode.Loose`, thêm `onReconnect` và dùng `interactionWidth` của BaseEdge |
 | Storage type error | `unknown[]` không satisfy `LsonObject` | Đổi sang `any[]` |
 | Unused lucide icons | `BringToFront`/`SendToBack` không tồn tại | Xóa khỏi import |
