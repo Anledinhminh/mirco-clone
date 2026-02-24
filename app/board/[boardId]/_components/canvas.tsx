@@ -43,7 +43,8 @@ import { StickyNoteNode } from "@/components/nodes/sticky-note-node";
 import { ShapeNode } from "@/components/nodes/shape-node";
 import { PathNode } from "@/components/nodes/path-node";
 import { NodeContextMenu } from "@/components/canvas/node-context-menu";
-import { CustomEdge } from "@/components/edges/custom-edge";
+import { FloatingEdge } from "@/components/edges/floating-edge";
+import { ConnectionLine } from "@/components/edges/connection-line";
 import { useBoardRole } from "@/hooks/use-board-role";
 
 const nodeTypes = {
@@ -55,11 +56,11 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-    customEdge: CustomEdge,
+    floatingEdge: FloatingEdge,
 };
 
 const defaultEdgeOptions = {
-    type: "customEdge",
+    type: "floatingEdge",
     markerEnd: { type: MarkerType.ArrowClosed, color: "#6366f1" },
 };
 
@@ -127,7 +128,7 @@ export function Canvas({ boardId }: CanvasProps) {
         const newEdge: Edge = {
             ...connection,
             id: `e-${Date.now()}`,
-            type: "customEdge",
+            type: "floatingEdge",
             markerEnd: { type: MarkerType.ArrowClosed, color: "#6366f1" },
         } as Edge;
         storage.set("edges", addEdge(newEdge, current) as unknown[]);
@@ -137,6 +138,44 @@ export function Canvas({ boardId }: CanvasProps) {
         const current = (storage.get("edges") as unknown as Edge[]) ?? [];
         storage.set("edges", reconnectEdge(oldEdge, newConnection, current) as unknown[]);
     }, []);
+
+    const onConnectEnd = useMutation(({ storage }, event, connectionState) => {
+        if (isViewer) return;
+        // If dropped exactly on a target node, connectionState.isValid is true and onConnect handles it
+        if (!connectionState.isValid && connectionState.fromNode) {
+            // Drop in empty space -> CREATE NEW NODE
+            const { clientX, clientY } = "changedTouches" in event ? event.changedTouches[0] : event;
+            const pos = screenToFlowPosition({ x: clientX, y: clientY });
+
+            // ID generation
+            const newNodeId = `node-${Date.now()}`;
+            const newEdgeId = `e-${Date.now()}`;
+
+            const newNode: Node = {
+                id: newNodeId,
+                type: "textNode", // default miro style
+                position: pos,
+                data: { html: "<p>New Idea</p>", text: "" },
+                style: { width: 220 },
+            };
+
+            const newEdge: Edge = {
+                id: newEdgeId,
+                source: connectionState.fromNode.id,
+                target: newNodeId,
+                sourceHandle: connectionState.fromHandle?.id ?? null,
+                targetHandle: null, // Since we use floating edge, handle ids aren't strict
+                type: "floatingEdge",
+                markerEnd: { type: MarkerType.ArrowClosed, color: "#6366f1" },
+            };
+
+            const currentNodes = (storage.get("nodes") as unknown as Node[]) ?? [];
+            storage.set("nodes", [...currentNodes, newNode] as unknown[]);
+
+            const currentEdges = (storage.get("edges") as unknown as Edge[]) ?? [];
+            storage.set("edges", [...currentEdges, newEdge] as unknown[]);
+        }
+    }, [isViewer, screenToFlowPosition]);
 
     const addNode = useMutation(
         (
@@ -538,12 +577,14 @@ export function Canvas({ boardId }: CanvasProps) {
                 onEdgesChange={isViewer ? undefined : setEdges}
                 onConnect={isViewer ? undefined : onConnect}
                 onReconnect={isViewer ? undefined : onReconnect}
+                onConnectEnd={isViewer ? undefined : onConnectEnd}
                 onPaneClick={onPaneClick}
                 onSelectionChange={onSelectionChange}
                 onMoveEnd={onMoveEnd}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
+                connectionLineComponent={ConnectionLine}
                 connectionMode={ConnectionMode.Loose}
                 selectionMode={SelectionMode.Partial}
                 panOnDrag={spaceHeld}/* Space held → LMB pans */

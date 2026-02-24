@@ -23,7 +23,7 @@
 | 📌 Sticky Note | Markdown rendering, 4 colors (yellow/blue/pink/green) |
 | 🔲 Shape Node | Rectangle, Circle, Triangle, Diamond with text support |
 | 🖍️ Pen Tool | Freehand drawing using `perfect-freehand` with real-time sync |
-| 🔗 Custom Connections | Reconnectable edges (drag ends to change nodes), any-to-any handle connections, editable text labels and context menu styling |
+| 🔗 Ultimate Connections | Dynamic Floating Edges (kết nối đường đi tự động bám theo giao điểm gần nhất của viền Shape), Live Connection Line (gợi ý màu sắc nét gạch đứt khi di chuột), và Quick-Create (kéo lưới ra khoảng trống tự động sinh Node mới). |
 | 🌙 Dark Mode | Sáng/Tối theme toàn ứng dụng thông qua `next-themes` |
 | 📥 Export to PNG | Tải xuống canvas hiện tại dạng PNG qua `html-to-image` |
 | 🔧 Node Resize | Kéo handle để thay đổi kích thước (NodeResizer) |
