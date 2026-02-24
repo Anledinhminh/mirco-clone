@@ -15,6 +15,8 @@ import {
     applyNodeChanges,
     applyEdgeChanges,
     addEdge,
+    reconnectEdge,
+    ConnectionMode,
     type Node,
     type Edge,
     type Viewport,
@@ -129,6 +131,11 @@ export function Canvas({ boardId }: CanvasProps) {
             markerEnd: { type: MarkerType.ArrowClosed, color: "#6366f1" },
         } as Edge;
         storage.set("edges", addEdge(newEdge, current) as unknown[]);
+    }, []);
+
+    const onReconnect = useMutation(({ storage }, oldEdge: Edge, newConnection: Connection) => {
+        const current = (storage.get("edges") as unknown as Edge[]) ?? [];
+        storage.set("edges", reconnectEdge(oldEdge, newConnection, current) as unknown[]);
     }, []);
 
     const addNode = useMutation(
@@ -530,12 +537,14 @@ export function Canvas({ boardId }: CanvasProps) {
                 onNodesChange={isViewer ? undefined : setNodes}
                 onEdgesChange={isViewer ? undefined : setEdges}
                 onConnect={isViewer ? undefined : onConnect}
+                onReconnect={isViewer ? undefined : onReconnect}
                 onPaneClick={onPaneClick}
                 onSelectionChange={onSelectionChange}
                 onMoveEnd={onMoveEnd}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
+                connectionMode={ConnectionMode.Loose}
                 selectionMode={SelectionMode.Partial}
                 panOnDrag={spaceHeld}/* Space held → LMB pans */
                 selectionOnDrag={!spaceHeld && activeTool === "select"}/* Default: drag to box-select */

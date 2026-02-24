@@ -157,11 +157,12 @@ export const CustomEdge = memo(function CustomEdge({
         <ContextMenu>
             <ContextMenuTrigger asChild>
                 {/* SVG grouping for the edge path */}
-                <g className="react-flow__edge">
+                <g className="react-flow__edge" onDoubleClick={handleDoubleClick} style={{ pointerEvents: 'all' }}>
                     <BaseEdge
                         id={id}
                         path={edgePath}
                         markerEnd={markerEnd}
+                        interactionWidth={20}
                         style={{
                             ...style,
                             stroke: color,
@@ -169,16 +170,6 @@ export const CustomEdge = memo(function CustomEdge({
                             filter: selected ? "drop-shadow(0 0 2px rgba(99, 102, 241, 0.5))" : "none",
                             transition: "stroke-width 0.1s ease",
                         }}
-                    />
-
-                    {/* Invisible thicker path for easier hovering/clicking over the line */}
-                    <path
-                        d={edgePath}
-                        fill="none"
-                        strokeOpacity={0}
-                        strokeWidth={20}
-                        className="react-flow__edge-interaction"
-                        onDoubleClick={handleDoubleClick}
                     />
 
                     {/* Edge Label (renders on top of the SVG viewport) */}

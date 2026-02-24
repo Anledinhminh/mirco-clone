@@ -23,7 +23,7 @@
 | 📌 Sticky Note | Markdown rendering, 4 colors (yellow/blue/pink/green) |
 | 🔲 Shape Node | Rectangle, Circle, Triangle, Diamond with text support |
 | 🖍️ Pen Tool | Freehand drawing using `perfect-freehand` with real-time sync |
-| 🔗 Custom Connections| Edges with editable text labels and context menu styling (Bezier, Step, Straight) |
+| 🔗 Custom Connections | Reconnectable edges (drag ends to change nodes), any-to-any handle connections, editable text labels and context menu styling |
 | 🌙 Dark Mode | Sáng/Tối theme toàn ứng dụng thông qua `next-themes` |
 | 📥 Export to PNG | Tải xuống canvas hiện tại dạng PNG qua `html-to-image` |
 | 🔧 Node Resize | Kéo handle để thay đổi kích thước (NodeResizer) |
@@ -120,6 +120,7 @@ d:\Manro\miro-clone\
 | ClientSideSuspense render function | Liveblocks v3 không dùng render function `{() => ...}` | Đổi sang direct JSX children |
 | `@tiptap/extension-text-style` no default export | Tiptap v3 chỉ có named exports | `import { TextStyle, FontSize, Color }` |
 | Tiptap FontSize missing | Không có official extension cho FontSize | Tự tạo `tiptap-fontsize-extension.ts` |
+| Edge inflexibility | Edges không cho reconnect, click bị path ẩn đè mất | Bật `ConnectionMode.Loose`, thêm `onReconnect` và dùng `interactionWidth` của BaseEdge |
 | Storage type error | `unknown[]` không satisfy `LsonObject` | Đổi sang `any[]` |
 | Unused lucide icons | `BringToFront`/`SendToBack` không tồn tại | Xóa khỏi import |
 
