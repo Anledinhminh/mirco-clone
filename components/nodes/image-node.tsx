@@ -53,20 +53,15 @@ export const ImageNode = memo(function ImageNode({
                 lineClassName="border-purple-400"
                 handleClassName="!bg-white !border-2 !border-purple-400 !rounded !w-2 !h-2"
             />
-            {/* Header */}
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-white/40" />
-                    <span className="text-white text-xs font-medium">Image</span>
-                </div>
+            {!url && !isEditing && (
                 <button
                     onClick={() => setIsEditing(true)}
-                    className="text-white/70 hover:text-white transition-colors"
+                    className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full text-slate-600 shadow-sm hover:text-purple-600 z-10 transition-colors opacity-0 group-hover:opacity-100"
                     title="Change URL"
                 >
-                    <Link2 className="h-3.5 w-3.5" />
+                    <Link2 className="h-4 w-4" />
                 </button>
-            </div>
+            )}
 
             {/* Content */}
             <div className="relative">

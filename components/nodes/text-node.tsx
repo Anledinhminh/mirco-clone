@@ -4,10 +4,12 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Color, TextStyle, FontSize } from "@tiptap/extension-text-style";
-import { Underline } from "@tiptap/extension-underline";
+import { Color } from "@tiptap/extension-color";
+import TextStyle from "@tiptap/extension-text-style";
+import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import { Highlight } from "@tiptap/extension-highlight";
+import Highlight from "@tiptap/extension-highlight";
+import { FontSize } from "./tiptap-fontsize-extension";
 import { RichTextToolbar } from "./rich-text-toolbar";
 import { cn } from "@/lib/utils";
 
@@ -88,12 +90,6 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
                     <RichTextToolbar editor={editor} />
                 </div>
             )}
-
-            {/* Node header */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-[10px] px-3 py-1.5 flex items-center gap-1.5 cursor-grab active:cursor-grabbing">
-                <div className="w-2 h-2 rounded-full bg-white/40" />
-                <span className="text-white text-xs font-medium select-none">Text</span>
-            </div>
 
             {/* Editor */}
             <div onKeyDown={stopPropagation}>
