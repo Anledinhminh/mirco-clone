@@ -148,7 +148,7 @@ export const FloatingEdge = memo(function FloatingEdge({
         labelX = x;
         labelY = y;
     } else {
-        const [path, x, y] = getSmoothStepPath(pathParams);
+        const [path, x, y] = getSmoothStepPath({ ...pathParams, borderRadius: 16 });
         edgePath = path;
         labelX = x;
         labelY = y;

@@ -1,58 +1,53 @@
 import { Position, type InternalNode } from '@xyflow/react';
 
-// Computes both the intersection point on the bounding box and the Side (Position) the point lies on
-function getIntersectionAndPosition(node: InternalNode, targetNode: InternalNode) {
-    const w = (node.measured.width || 0) / 2;
-    const h = (node.measured.height || 0) / 2;
+function getSideCenters(node: InternalNode) {
+    const w = node.measured.width || 0;
+    const h = node.measured.height || 0;
+    const x = node.internals.positionAbsolute.x;
+    const y = node.internals.positionAbsolute.y;
 
-    const sourceCenter = {
-        x: node.internals.positionAbsolute.x + w,
-        y: node.internals.positionAbsolute.y + h,
+    return {
+        [Position.Top]: { x: x + w / 2, y },
+        [Position.Bottom]: { x: x + w / 2, y: y + h },
+        [Position.Left]: { x, y: y + h / 2 },
+        [Position.Right]: { x: x + w, y: y + h / 2 },
     };
-    const targetCenter = {
-        x: targetNode.internals.positionAbsolute.x + (targetNode.measured.width || 0) / 2,
-        y: targetNode.internals.positionAbsolute.y + (targetNode.measured.height || 0) / 2,
-    };
-
-    const dx = targetCenter.x - sourceCenter.x;
-    const dy = targetCenter.y - sourceCenter.y;
-
-    if (dx === 0 && dy === 0) {
-        return { point: sourceCenter, position: Position.Top };
-    }
-
-    const ratioX = Math.abs(w / dx);
-    const ratioY = Math.abs(h / dy);
-    const ratio = Math.min(ratioX, ratioY);
-
-    const intersectionPoint = {
-        x: sourceCenter.x + dx * ratio,
-        y: sourceCenter.y + dy * ratio,
-    };
-
-    let position: Position;
-    // If ratioX is smaller, the point lies on the left or right edge
-    if (ratioX < ratioY) {
-        position = dx > 0 ? Position.Right : Position.Left;
-    } else {
-        // If ratioY is smaller or equal, the point lies on the top or bottom edge
-        position = dy > 0 ? Position.Bottom : Position.Top;
-    }
-
-    return { point: intersectionPoint, position };
 }
 
 // Returns the parameters to construct the Edge, given two internal nodes.
+// It smartly finds the closest pair of side-centers between the two nodes.
 export function getEdgeParams(source: InternalNode, target: InternalNode) {
-    const sourceResult = getIntersectionAndPosition(source, target);
-    const targetResult = getIntersectionAndPosition(target, source);
+    const sourceCenters = getSideCenters(source);
+    const targetCenters = getSideCenters(target);
+
+    let minDistance = Infinity;
+    let bestSourcePos = Position.Right;
+    let bestTargetPos = Position.Left;
+
+    const positions = [Position.Top, Position.Right, Position.Bottom, Position.Left];
+
+    for (const sPos of positions) {
+        for (const tPos of positions) {
+            const sPoint = sourceCenters[sPos];
+            const tPoint = targetCenters[tPos];
+
+            // Euclidean distance squared
+            const dist = Math.pow(sPoint.x - tPoint.x, 2) + Math.pow(sPoint.y - tPoint.y, 2);
+
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestSourcePos = sPos;
+                bestTargetPos = tPos;
+            }
+        }
+    }
 
     return {
-        sx: sourceResult.point.x,
-        sy: sourceResult.point.y,
-        tx: targetResult.point.x,
-        ty: targetResult.point.y,
-        sourcePos: sourceResult.position,
-        targetPos: targetResult.position,
+        sx: sourceCenters[bestSourcePos].x,
+        sy: sourceCenters[bestSourcePos].y,
+        tx: targetCenters[bestTargetPos].x,
+        ty: targetCenters[bestTargetPos].y,
+        sourcePos: bestSourcePos,
+        targetPos: bestTargetPos,
     };
 }
