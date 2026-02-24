@@ -66,6 +66,7 @@ interface CanvasProps {
 }
 
 export function Canvas({ boardId }: CanvasProps) {
+    // forced cache buster 1
     const { user } = useUser();
     const { resolvedTheme } = useTheme();
     const [, updateMyPresence] = useMyPresence();
@@ -140,7 +141,7 @@ export function Canvas({ boardId }: CanvasProps) {
             const existing = (storage.get("nodes") as unknown as Node[]) ?? [];
             const defaultData =
                 type === "textNode" || type === "stickyNode" || type === "shapeNode"
-                    ? { html: "<p>Type here…</p>", text: "", shapeType: "rectangle" }
+                    ? { html: "<p>Double-click to edit...</p>", text: "", shapeType: "rectangle" }
                     : type === "pathNode" ? { points: [] } : { url: "" };
 
             const newNode: Node = {
