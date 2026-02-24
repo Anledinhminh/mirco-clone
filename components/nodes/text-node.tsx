@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState, useRef } from "react";
 import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -22,6 +22,7 @@ interface TextNodeData {
 export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps) {
     const nodeData = data as TextNodeData;
     const [isFocused, setIsFocused] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // Prefer HTML content, fall back to plain text
     const initialContent = nodeData.html ?? (nodeData.text ? `<p>${nodeData.text}</p>` : "<p>Double-click to edit…</p>");
@@ -45,13 +46,19 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
         },
         onFocus: () => setIsFocused(true),
         onBlur: ({ editor: ed }) => {
-            setIsFocused(false);
-            // Sync to Liveblocks
-            const event = new CustomEvent("nodeDataChange", {
-                bubbles: true,
-                detail: { id, data: { html: ed.getHTML(), text: ed.getText() } },
+            requestAnimationFrame(() => {
+                if (containerRef.current && containerRef.current.contains(document.activeElement)) {
+                    // Focus moved to the toolbar (e.g. font size select), do not blur the node
+                    return;
+                }
+                setIsFocused(false);
+                // Sync to Liveblocks
+                const event = new CustomEvent("nodeDataChange", {
+                    bubbles: true,
+                    detail: { id, data: { html: ed.getHTML(), text: ed.getText() } },
+                });
+                document.dispatchEvent(event);
             });
-            document.dispatchEvent(event);
         },
     });
 
@@ -71,6 +78,7 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
 
     return (
         <div
+            ref={containerRef}
             className={cn(
                 "bg-white rounded-xl shadow-lg border-2 min-w-[200px] overflow-visible transition-all duration-150 group",
                 selected ? "border-blue-500 shadow-blue-200 shadow-lg" : "border-slate-200 hover:border-slate-300"
@@ -86,13 +94,13 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
             />
             {/* Toolbar — floats above node when focused */}
             {editor && isFocused && (
-                <div className="absolute -top-12 left-0 z-50">
+                <div className="absolute -top-12 left-0 z-50 nodrag nopan">
                     <RichTextToolbar editor={editor} />
                 </div>
             )}
 
             {/* Editor */}
-            <div onKeyDown={stopPropagation}>
+            <div className="nodrag cursor-text" onKeyDown={stopPropagation}>
                 <EditorContent editor={editor} />
             </div>
 

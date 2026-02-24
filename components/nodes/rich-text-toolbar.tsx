@@ -36,7 +36,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             {/* Bold */}
             <ToolBtn
                 active={editor.isActive("bold")}
-                onClick={() => editor.chain().focus().toggleBold().run()}
+                onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
                 title="Bold (Ctrl+B)"
             >
                 <Bold className="h-3.5 w-3.5" />
@@ -45,7 +45,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             {/* Italic */}
             <ToolBtn
                 active={editor.isActive("italic")}
-                onClick={() => editor.chain().focus().toggleItalic().run()}
+                onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
                 title="Italic (Ctrl+I)"
             >
                 <Italic className="h-3.5 w-3.5" />
@@ -54,7 +54,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             {/* Underline */}
             <ToolBtn
                 active={editor.isActive("underline")}
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
                 title="Underline (Ctrl+U)"
             >
                 <Underline className="h-3.5 w-3.5" />
@@ -63,7 +63,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             {/* Strikethrough */}
             <ToolBtn
                 active={editor.isActive("strike")}
-                onClick={() => editor.chain().focus().toggleStrike().run()}
+                onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); }}
                 title="Strikethrough"
             >
                 <Strikethrough className="h-3.5 w-3.5" />
@@ -77,6 +77,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
                 onChange={(e) =>
                     editor.chain().focus().setFontSize(`${e.target.value}px`).run()
                 }
+                onMouseDown={(e) => e.stopPropagation()} // allow dropdown to open
                 className="text-xs border border-slate-200 rounded-lg px-1.5 py-0.5 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
                 title="Font size"
             >
@@ -90,21 +91,21 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             {/* Text align */}
             <ToolBtn
                 active={editor.isActive({ textAlign: "left" })}
-                onClick={() => editor.chain().focus().setTextAlign("left").run()}
+                onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().setTextAlign("left").run(); }}
                 title="Align left"
             >
                 <AlignLeft className="h-3.5 w-3.5" />
             </ToolBtn>
             <ToolBtn
                 active={editor.isActive({ textAlign: "center" })}
-                onClick={() => editor.chain().focus().setTextAlign("center").run()}
+                onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().setTextAlign("center").run(); }}
                 title="Align center"
             >
                 <AlignCenter className="h-3.5 w-3.5" />
             </ToolBtn>
             <ToolBtn
                 active={editor.isActive({ textAlign: "right" })}
-                onClick={() => editor.chain().focus().setTextAlign("right").run()}
+                onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().setTextAlign("right").run(); }}
                 title="Align right"
             >
                 <AlignRight className="h-3.5 w-3.5" />
@@ -118,7 +119,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
                     <button
                         key={c.value}
                         title={c.label}
-                        onClick={() => editor.chain().focus().setColor(c.value).run()}
+                        onPointerDown={(e) => { e.preventDefault(); editor.chain().focus().setColor(c.value).run(); }}
                         className={cn(
                             "w-4 h-4 rounded-full border-2 transition-transform hover:scale-110",
                             currentColor === c.value ? "border-slate-600 scale-125" : "border-transparent"
@@ -132,16 +133,16 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
 }
 
 function ToolBtn({
-    children, active, onClick, title,
+    children, active, onPointerDown, title,
 }: {
     children: React.ReactNode;
     active: boolean;
-    onClick: () => void;
+    onPointerDown: (e: React.PointerEvent) => void;
     title?: string;
 }) {
     return (
         <button
-            onClick={onClick}
+            onPointerDown={onPointerDown}
             title={title}
             className={cn(
                 "p-1.5 rounded-lg transition-colors",
