@@ -355,18 +355,25 @@ export function Canvas({ boardId }: CanvasProps) {
     }, [screenToFlowPosition, getViewport]);
 
     const addImageFromBlob = useCallback(async (blob: Blob, offset = 0) => {
-        const optimized = await optimizeImageBlobToDataUrl(blob);
-        const basePos = getPreferredInsertPosition();
-        const position = {
-            x: basePos.x + offset,
-            y: basePos.y + offset,
-        };
+        try {
+            const optimized = await optimizeImageBlobToDataUrl(blob, {
+                maxDimension: 1800,
+                quality: 0.85,
+            });
+            const basePos = getPreferredInsertPosition();
+            const position = {
+                x: basePos.x + offset,
+                y: basePos.y + offset,
+            };
 
-        addNode("imageNode", position, {
-            url: optimized.dataUrl,
-            originalWidth: optimized.width,
-            originalHeight: optimized.height,
-        });
+            addNode("imageNode", position, {
+                url: optimized.dataUrl,
+                originalWidth: optimized.width,
+                originalHeight: optimized.height,
+            });
+        } catch {
+            // silently fail – the image was unreadable
+        }
     }, [addNode, getPreferredInsertPosition]);
 
     // ── Selection → presence sync ────────────────────────────────────
@@ -551,22 +558,35 @@ export function Canvas({ boardId }: CanvasProps) {
     useEffect(() => {
         const handlePaste = (e: ClipboardEvent) => {
             if (isViewer) return;
+
+            // Don't intercept paste when user is editing text
             const target = e.target as HTMLElement;
-            if (target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+            const isTextInput =
+                target.tagName === "INPUT" ||
+                target.tagName === "TEXTAREA" ||
+                target.isContentEditable ||
+                !!target.closest(".ProseMirror");
+            if (isTextInput) return;
+
             const items = e.clipboardData?.items;
             if (!items) return;
+
+            // Look for image content
             for (const item of Array.from(items)) {
                 if (item.type.startsWith("image/")) {
                     e.preventDefault();
+                    e.stopPropagation();
                     const blob = item.getAsFile();
                     if (!blob) continue;
                     void addImageFromBlob(blob);
-                    break;
+                    return; // only handle first image
                 }
             }
         };
-        document.addEventListener("paste", handlePaste);
-        return () => document.removeEventListener("paste", handlePaste);
+
+        // Use capture phase so we get the event before React Flow or other handlers
+        document.addEventListener("paste", handlePaste, true);
+        return () => document.removeEventListener("paste", handlePaste, true);
     }, [isViewer, addImageFromBlob]);
 
     const onImageInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

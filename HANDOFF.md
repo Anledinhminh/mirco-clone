@@ -1,6 +1,6 @@
 # 📋 Tài Liệu Bàn Giao – Miro Clone
 
-> **Ngày cập nhật:** 2026-02-25  
+> **Ngày cập nhật:** 2026-02-25 (v2)  
 > **Project path:** `d:\Manro\miro-clone`  
 > **GitHub:** [https://github.com/Anledinhminh/mirco-clone](https://github.com/Anledinhminh/mirco-clone)
 
@@ -185,13 +185,31 @@ npm run dev           # Terminal 2
 - Đổi live connection preview sang bezier (`components/edges/connection-line.tsx`) để cảm giác kéo dây mượt hơn.
 - Fix bug xoá edge từ context menu: không còn gọi nhầm luồng xoá node.
 
-### ✅ Upload ảnh + Ctrl+V screenshot tốt hơn
+### ✅ Upload ảnh + Ctrl+V screenshot — REBUILT (v2)
 
-- Thêm pipeline optimize ảnh client-side trong `lib/image-utils.ts`:
-    - resize ảnh lớn về `maxDimension` (mặc định 2200)
-    - xuất `image/webp` với quality mặc định 0.88
-    - giảm đáng kể payload storage khi paste screenshot kích thước lớn.
-- `Ctrl+V` ảnh giờ chèn vào vị trí con trỏ/viewport hợp lý thay vì cố định giữa cửa sổ.
-- Nút Image trên toolbar mở file picker (`accept="image/*"`, hỗ trợ multi-select).
-- Hỗ trợ kéo-thả ảnh trực tiếp vào canvas.
-- Khi thêm ảnh từ file/paste/drop, node tự suy ra kích thước hiển thị ban đầu theo tỉ lệ ảnh thật để nhìn tự nhiên hơn.
+**Root cause đã fix:** `ImageNode` dùng `useState` nhưng không sync lại khi Liveblocks storage cập nhật URL từ bên ngoài (paste/drop). Kết quả: paste screenshot xong, node vẫn hiện form "Paste URL" trống.
+
+**Thay đổi chi tiết:**
+
+#### `components/nodes/image-node.tsx` — Xây lại hoàn toàn:
+- **useEffect sync** từ `data.url` (Liveblocks) → local state: khi canvas ghi URL vào storage, node tự hiện ảnh ngay.
+- **Node-level paste/drop**: mỗi ImageNode tự listen `onPaste` + `onDrop`, cho phép paste/drop ảnh trực tiếp vào node đã có.
+- **File picker riêng**: nút "Upload" mở file dialog tại chỗ trong node.
+- **Loading overlay**: spinner hiện trong khi optimize ảnh, tránh mất phản hồi.
+- **Skeleton shimmer**: hiệu ứng shimmer trước khi ảnh render xong.
+- **`object-contain` full-size**: ảnh chiếm 100% node container, không bị crop hay giới hạn `max-h`.
+- **Dark mode**: hỗ trợ đầy đủ `dark:` classes.
+- **Clean empty state**: 2 nút Upload + URL + gợi ý "Ctrl+V to paste".
+
+#### `app/board/[boardId]/_components/canvas.tsx` — Paste handler cải thiện:
+- Listener paste dùng **capture phase** (`addEventListener("paste", ..., true)`) để bắt event trước React Flow.
+- Check `isTextInput` kỹ hơn: bao gồm cả `.ProseMirror` (Tiptap editor).
+- `e.stopPropagation()` sau xử lý để các handler khác không nhận event.
+- `addImageFromBlob` giờ có `try/catch` − im lặng nếu ảnh lỗi, không crash.
+- Truyền `maxDimension: 1800` + `quality: 0.85` rõ ràng.
+
+#### `lib/image-utils.ts` — Pipeline optimize nhanh hơn:
+- Dùng `createImageBitmap` (off-main-thread decode) khi có, fallback `<img>`.
+- Auto-detect WebP support, fallback JPEG.
+- Mặc định `maxDimension: 1800`, `quality: 0.85` (nhỏ hơn trước, phù hợp Liveblocks quota).
+- Export `OptimizeOptions` interface cho consumer tuỳ chỉnh.
