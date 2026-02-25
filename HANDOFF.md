@@ -1,6 +1,6 @@
 # 📋 Tài Liệu Bàn Giao – Miro Clone
 
-> **Ngày cập nhật:** 2026-02-24  
+> **Ngày cập nhật:** 2026-02-25  
 > **Project path:** `d:\Manro\miro-clone`  
 > **GitHub:** [https://github.com/Anledinhminh/mirco-clone](https://github.com/Anledinhminh/mirco-clone)
 
@@ -19,11 +19,11 @@
 | 🖱️ Live Cursors | Cursor real-time + smooth animation (80ms transition) |
 | 🔄 Real-time Sync | Nodes & Edges đồng bộ qua Liveblocks storage |
 | 📝 Rich Text Node | Tiptap editor: Bold, Italic, Underline, Font size (custom extension), Color, Alignment. Seamless UI without headers. |
-| 🖼️ Image Node | Seamless URL input + Ctrl+V screenshot paste (base64) with invisible bounding boxes |
+| 🖼️ Image Node | URL input + Upload từ file picker + Drag & Drop + Ctrl+V screenshot, có optimize ảnh client-side trước khi lưu để giảm lag |
 | 📌 Sticky Note | Markdown rendering, 4 colors (yellow/blue/pink/green) |
 | 🔲 Shape Node | Rectangle, Circle, Triangle, Diamond with text support |
 | 🖍️ Pen Tool | Freehand drawing using `perfect-freehand` with real-time sync |
-| 🔗 Ultimate Connections | Smart Routing Edges (tự động nối qua đích là trung điểm gần nhất của viền Shape, bẻ cong mềm mại 16px để tránh gấp khúc lộn xộn), Live Connection Line (nét đứt kéo chuột động), và Quick-Create (kéo lưới qua khoảng trống tự động sinh Node mới). |
+| 🔗 Ultimate Connections | Bi-directional handles (source/target 4 cạnh), tăng vùng bắt kết nối/reconnect (`connectionRadius`, `reconnectRadius`), routing ổn định theo hướng tương đối giữa 2 node, live preview đường nối mượt kiểu bezier + Quick-Create khi thả vào vùng trống. |
 | 🌙 Dark Mode | Sáng/Tối theme toàn ứng dụng thông qua `next-themes` |
 | 📥 Export to PNG | Tải xuống canvas hiện tại dạng PNG qua `html-to-image` |
 | 🔧 Node Resize | Kéo handle để thay đổi kích thước (NodeResizer) |
@@ -168,3 +168,30 @@ npm run dev           # Terminal 2
 1. **Board Templates** — Retrospective, Brainstorm, Flowchart (Thêm template vào canvas)
 2. **Cloud Image Upload** — Thay đổi logic upload qua AWS S3/Cloudinary thay vì Base64 để tiết kiệm Storage
 3. **Advanced Permissions** — Cấp quyền riêng lẻ cho từng người dùng (share link via email invitation)
+
+---
+
+## 9. Cập nhật mới (Session 2026-02-25)
+
+### ✅ Connecting mượt & linh hoạt hơn
+
+- Chuyển các node chính (`text`, `image`, `sticky`, `shape`) sang **bi-directional handles** ở cả 4 cạnh (vừa source vừa target) để kéo/thả kết nối dễ hơn.
+- Sửa hiển thị handles bằng `group` wrapper để trạng thái hover hoạt động đúng (trước đó một số node bị ẩn handle liên tục).
+- Tăng độ dễ bắt khi nối/reconnect với:
+    - `connectionRadius={36}`
+    - `reconnectRadius={36}`
+    - `autoPanOnConnect`
+- Cải thiện logic routing trong `lib/edge-utils.ts`: chọn cạnh bám theo vector hướng giữa tâm 2 node để đường nối ổn định hơn, giảm giật cạnh khi node gần nhau.
+- Đổi live connection preview sang bezier (`components/edges/connection-line.tsx`) để cảm giác kéo dây mượt hơn.
+- Fix bug xoá edge từ context menu: không còn gọi nhầm luồng xoá node.
+
+### ✅ Upload ảnh + Ctrl+V screenshot tốt hơn
+
+- Thêm pipeline optimize ảnh client-side trong `lib/image-utils.ts`:
+    - resize ảnh lớn về `maxDimension` (mặc định 2200)
+    - xuất `image/webp` với quality mặc định 0.88
+    - giảm đáng kể payload storage khi paste screenshot kích thước lớn.
+- `Ctrl+V` ảnh giờ chèn vào vị trí con trỏ/viewport hợp lý thay vì cố định giữa cửa sổ.
+- Nút Image trên toolbar mở file picker (`accept="image/*"`, hỗ trợ multi-select).
+- Hỗ trợ kéo-thả ảnh trực tiếp vào canvas.
+- Khi thêm ảnh từ file/paste/drop, node tự suy ra kích thước hiển thị ban đầu theo tỉ lệ ảnh thật để nhìn tự nhiên hơn.

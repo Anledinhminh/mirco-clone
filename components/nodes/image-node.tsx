@@ -41,7 +41,7 @@ export const ImageNode = memo(function ImageNode({
     return (
         <div
             className={cn(
-                "bg-white rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-150",
+                "group bg-white rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-150",
                 selected ? "border-purple-500 shadow-purple-200 shadow-lg" : "border-slate-200 hover:border-slate-300"
             )}
             style={{ minWidth: 220, minHeight: 180, height: "100%" }}
@@ -124,11 +124,15 @@ export const ImageNode = memo(function ImageNode({
                 )}
             </div>
 
-            {/* React Flow Handles - Uniform blue dots for floating connection */}
-            <Handle type="source" id="left" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="source" id="right" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="source" id="top" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="source" id="bottom" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            {/* React Flow Handles - Bidirectional for easier connecting/reconnecting */}
+            <Handle type="source" id="source-left" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="source" id="source-right" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="source" id="source-top" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="source" id="source-bottom" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="target" id="target-left" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="target" id="target-right" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="target" id="target-top" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            <Handle type="target" id="target-bottom" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
         </div>
     );
 });

@@ -46,6 +46,7 @@ import { NodeContextMenu } from "@/components/canvas/node-context-menu";
 import { FloatingEdge } from "@/components/edges/floating-edge";
 import { ConnectionLine } from "@/components/edges/connection-line";
 import { useBoardRole } from "@/hooks/use-board-role";
+import { optimizeImageBlobToDataUrl } from "@/lib/image-utils";
 
 const nodeTypes = {
     textNode: TextNode,
@@ -75,7 +76,7 @@ export function Canvas({ boardId }: CanvasProps) {
     const [, updateMyPresence] = useMyPresence();
     const self = useSelf();
     const { undo, redo } = useHistory();
-    const { screenToFlowPosition, getViewport, setViewport, getNodes } = useReactFlow();
+    const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
 
     // ── Local state ──────────────────────────────────────────────────
     const [activeTool, setActiveTool] = useState<ActiveTool>("select");
@@ -85,6 +86,9 @@ export function Canvas({ boardId }: CanvasProps) {
     const [spaceHeld, setSpaceHeld] = useState(false);
     const [isDrawing, setIsDrawing] = useState(false);
     const currentPathIdRef = useRef<string | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const lastPointerClientRef = useRef<{ x: number; y: number } | null>(null);
     const followingRef = useRef(followingId);
     followingRef.current = followingId;
 
@@ -139,6 +143,11 @@ export function Canvas({ boardId }: CanvasProps) {
         storage.set("edges", reconnectEdge(oldEdge, newConnection, current) as unknown[]);
     }, []);
 
+    const deleteEdgeById = useMutation(({ storage }, edgeId: string) => {
+        const current = (storage.get("edges") as unknown as Edge[]) ?? [];
+        storage.set("edges", current.filter((edge) => edge.id !== edgeId) as unknown[]);
+    }, []);
+
     const onConnectEnd = useMutation(({ storage }, event, connectionState) => {
         if (isViewer) return;
         // If dropped exactly on a target node, connectionState.isValid is true and onConnect handles it
@@ -190,14 +199,34 @@ export function Canvas({ boardId }: CanvasProps) {
                     ? { html: "<p>Double-click to edit...</p>", text: "", shapeType: "rectangle" }
                     : type === "pathNode" ? { points: [] } : { url: "" };
 
+            const imageWidth = Number(initialData?.originalWidth ?? 0);
+            const imageHeight = Number(initialData?.originalHeight ?? 0);
+
+            let style: Node["style"];
+            if (type === "textNode") {
+                style = { width: 220 };
+            } else if (type === "shapeNode") {
+                style = { width: 120, height: 120 };
+            } else if (type === "imageNode") {
+                if (imageWidth > 0 && imageHeight > 0) {
+                    const maxRenderedWidth = 420;
+                    const scale = Math.min(1, maxRenderedWidth / imageWidth);
+                    style = {
+                        width: Math.max(220, Math.round(imageWidth * scale)),
+                        height: Math.max(180, Math.round(imageHeight * scale)),
+                    };
+                } else {
+                    style = { width: 260 };
+                }
+            }
+
             const newNode: Node = {
                 id: `node-${Date.now()}`,
                 type,
                 position,
                 data: { ...defaultData, ...initialData },
-                style: { width: type === "textNode" ? 220 : type === "shapeNode" ? 120 : type === "pathNode" ? undefined : 260 },
+                style,
             };
-            if (type === "shapeNode" && newNode.style) newNode.style.height = 120; // default square
 
             storage.set("nodes", [...existing, newNode] as unknown[]);
             return newNode.id;
@@ -290,8 +319,7 @@ export function Canvas({ boardId }: CanvasProps) {
         };
         const edgeDeleteHandler = (e: CustomEvent) => {
             if (isViewer) return;
-            // Delete edge logic (we can reuse deleteNodes because it also filters edges)
-            deleteNodes([e.detail.id]);
+            deleteEdgeById(e.detail.id);
         };
 
         document.addEventListener("nodeDataChange", nodeHandler as EventListener);
@@ -303,7 +331,43 @@ export function Canvas({ boardId }: CanvasProps) {
             document.removeEventListener("edgeDataChange", edgeHandler as EventListener);
             document.removeEventListener("edgeDelete", edgeDeleteHandler as EventListener);
         };
-    }, [updateNodeData, updateEdgeData, deleteNodes, isViewer]);
+    }, [updateNodeData, updateEdgeData, deleteEdgeById, isViewer]);
+
+    const getPreferredInsertPosition = useCallback(() => {
+        const lastPointer = lastPointerClientRef.current;
+        if (lastPointer) {
+            return screenToFlowPosition(lastPointer);
+        }
+
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect) {
+            return screenToFlowPosition({
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+            });
+        }
+
+        const viewport = getViewport();
+        return {
+            x: -viewport.x / viewport.zoom,
+            y: -viewport.y / viewport.zoom,
+        };
+    }, [screenToFlowPosition, getViewport]);
+
+    const addImageFromBlob = useCallback(async (blob: Blob, offset = 0) => {
+        const optimized = await optimizeImageBlobToDataUrl(blob);
+        const basePos = getPreferredInsertPosition();
+        const position = {
+            x: basePos.x + offset,
+            y: basePos.y + offset,
+        };
+
+        addNode("imageNode", position, {
+            url: optimized.dataUrl,
+            originalWidth: optimized.width,
+            originalHeight: optimized.height,
+        });
+    }, [addNode, getPreferredInsertPosition]);
 
     // ── Selection → presence sync ────────────────────────────────────
     const onSelectionChange = useCallback(
@@ -319,6 +383,7 @@ export function Canvas({ boardId }: CanvasProps) {
     const onMouseMove = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
             if (followingRef.current !== null) return; // don't override while following
+            lastPointerClientRef.current = { x: e.clientX, y: e.clientY };
             const rect = e.currentTarget.getBoundingClientRect();
             updateMyPresence({ cursor: { x: e.clientX - rect.left, y: e.clientY - rect.top } });
         },
@@ -495,30 +560,49 @@ export function Canvas({ boardId }: CanvasProps) {
                     e.preventDefault();
                     const blob = item.getAsFile();
                     if (!blob) continue;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        const dataUrl = ev.target?.result as string;
-                        if (!dataUrl) return;
-                        const pos = screenToFlowPosition({
-                            x: window.innerWidth / 2,
-                            y: window.innerHeight / 2,
-                        });
-                        addNode("imageNode", pos, { url: dataUrl });
-                    };
-                    reader.readAsDataURL(blob);
+                    void addImageFromBlob(blob);
                     break;
                 }
             }
         };
         document.addEventListener("paste", handlePaste);
         return () => document.removeEventListener("paste", handlePaste);
-    }, [isViewer, screenToFlowPosition, addNode]);
+    }, [isViewer, addImageFromBlob]);
+
+    const onImageInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (isViewer) return;
+        const files = Array.from(e.target.files ?? []).filter((file) => file.type.startsWith("image/"));
+        for (const [index, file] of files.entries()) {
+            await addImageFromBlob(file, index * 24);
+        }
+        e.currentTarget.value = "";
+    }, [isViewer, addImageFromBlob]);
+
+    const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        if (isViewer) return;
+        if (Array.from(e.dataTransfer.items).some((item) => item.type.startsWith("image/"))) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+        }
+    }, [isViewer]);
+
+    const onDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+        if (isViewer) return;
+        const files = Array.from(e.dataTransfer.files ?? []).filter((file) => file.type.startsWith("image/"));
+        if (files.length === 0) return;
+
+        e.preventDefault();
+        lastPointerClientRef.current = { x: e.clientX, y: e.clientY };
+        for (const [index, file] of files.entries()) {
+            await addImageFromBlob(file, index * 24);
+        }
+    }, [isViewer, addImageFromBlob]);
 
     // ── Add node from toolbar ──────────────────────────────────────────
     const onAddImageNode = useCallback(() => {
-        const pos = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-        addNode("imageNode", pos);
-    }, [addNode, screenToFlowPosition]);
+        if (isViewer) return;
+        imageInputRef.current?.click();
+    }, [isViewer]);
 
     // ── Context menu handlers for each node ───────────────────────────
     const makeNodeMenuProps = useCallback(
@@ -546,6 +630,7 @@ export function Canvas({ boardId }: CanvasProps) {
 
     return (
         <div
+            ref={containerRef}
             className="h-full w-full relative bg-slate-50 dark:bg-slate-950 touch-none"
             onMouseMove={onMouseMove}
             onMouseLeave={onMouseLeave}
@@ -553,8 +638,18 @@ export function Canvas({ boardId }: CanvasProps) {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
             style={{ cursor: cursorStyle }}
         >
+            <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={onImageInputChange}
+            />
             <BoardInfo boardId={boardId} />
             <Participants onFollowUser={toggleFollow} followingId={followingId} />
             {!isViewer && (
@@ -586,6 +681,10 @@ export function Canvas({ boardId }: CanvasProps) {
                 defaultEdgeOptions={defaultEdgeOptions}
                 connectionLineComponent={ConnectionLine}
                 connectionMode={ConnectionMode.Loose}
+                edgesReconnectable={!isViewer}
+                autoPanOnConnect
+                connectionRadius={36}
+                reconnectRadius={36}
                 selectionMode={SelectionMode.Partial}
                 panOnDrag={spaceHeld}/* Space held → LMB pans */
                 selectionOnDrag={!spaceHeld && activeTool === "select"}/* Default: drag to box-select */
