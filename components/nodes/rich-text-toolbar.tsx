@@ -30,7 +30,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
 
     return (
         <div
-            className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-xl shadow-xl px-1.5 py-1 z-50"
+            className="flex items-center gap-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl px-1.5 py-1 z-50"
             onMouseDown={(e) => e.preventDefault()} // prevent blur on editor
         >
             {/* Bold */}
@@ -78,7 +78,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
                     editor.chain().focus().setFontSize(`${e.target.value}px`).run()
                 }
                 onMouseDown={(e) => e.stopPropagation()} // allow dropdown to open
-                className="text-xs border border-slate-200 rounded-lg px-1.5 py-0.5 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
+                className="text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-1.5 py-0.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
                 title="Font size"
             >
                 {FONT_SIZES.map((s) => (
@@ -147,8 +147,8 @@ function ToolBtn({
             className={cn(
                 "p-1.5 rounded-lg transition-colors",
                 active
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
             )}
         >
             {children}
@@ -157,5 +157,5 @@ function ToolBtn({
 }
 
 function Divider() {
-    return <div className="w-px h-5 bg-slate-200 mx-0.5" />;
+    return <div className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-0.5" />;
 }

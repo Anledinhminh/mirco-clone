@@ -9,6 +9,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { Underline } from "@tiptap/extension-underline";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { Highlight } from "@tiptap/extension-highlight";
+import Placeholder from "@tiptap/extension-placeholder";
 import { FontSize } from "./tiptap-fontsize-extension";
 import { RichTextToolbar } from "./rich-text-toolbar";
 import { cn } from "@/lib/utils";
@@ -25,7 +26,7 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Prefer HTML content, fall back to plain text
-    const initialContent = nodeData.html ?? (nodeData.text ? `<p>${nodeData.text}</p>` : "<p>Double-click to edit…</p>");
+    const initialContent = nodeData.html ?? (nodeData.text ? `<p>${nodeData.text}</p>` : "");
 
     const editor = useEditor({
         immediatelyRender: false,
@@ -37,22 +38,21 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
             Underline,
             TextAlign.configure({ types: ["paragraph"] }),
             Highlight.configure({ multicolor: true }),
+            Placeholder.configure({ placeholder: "Type something…" }),
         ],
         content: initialContent,
         editorProps: {
             attributes: {
-                class: "outline-none min-h-[60px] p-3 text-slate-800 text-sm leading-relaxed prose prose-sm max-w-none",
+                class: "outline-none min-h-[2rem] p-3 text-sm leading-relaxed prose prose-sm max-w-none text-node-content",
             },
         },
         onFocus: () => setIsFocused(true),
         onBlur: ({ editor: ed }) => {
             requestAnimationFrame(() => {
                 if (containerRef.current && containerRef.current.contains(document.activeElement)) {
-                    // Focus moved to the toolbar (e.g. font size select), do not blur the node
                     return;
                 }
                 setIsFocused(false);
-                // Sync to Liveblocks
                 const event = new CustomEvent("nodeDataChange", {
                     bubbles: true,
                     detail: { id, data: { html: ed.getHTML(), text: ed.getText() } },
@@ -61,6 +61,18 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
             });
         },
     });
+
+    // Auto-resize: dispatch a dimension change whenever content height changes
+    useEffect(() => {
+        if (!editor || !containerRef.current) return;
+        const ro = new ResizeObserver(() => {
+            // Trigger React Flow to re-measure
+            window.dispatchEvent(new Event("resize"));
+        });
+        const el = containerRef.current.querySelector(".ProseMirror");
+        if (el) ro.observe(el);
+        return () => ro.disconnect();
+    }, [editor]);
 
     // Sync external data changes (e.g. another user editing)
     useEffect(() => {
@@ -72,47 +84,52 @@ export const TextNode = memo(function TextNode({ data, selected, id }: NodeProps
     }, [nodeData.html, nodeData.text, editor]);
 
     const stopPropagation = useCallback((e: React.KeyboardEvent) => {
-        // Don't let ReactFlow capture keyboard events while editing
         e.stopPropagation();
     }, []);
+
+    const handleStyle = "!w-2.5 !h-2.5 !bg-blue-500 !border-2 !border-white !rounded-full !opacity-0 group-hover:!opacity-100 transition-opacity";
 
     return (
         <div
             ref={containerRef}
             className={cn(
-                "bg-white rounded-xl shadow-lg border-2 min-w-[200px] overflow-visible transition-all duration-150 group",
-                selected ? "border-blue-500 shadow-blue-200 shadow-lg" : "border-slate-200 hover:border-slate-300"
+                "rounded-xl shadow-md border-2 min-w-[200px] overflow-visible transition-all duration-150 group",
+                "bg-white dark:bg-slate-800",
+                selected
+                    ? "border-blue-500 shadow-blue-200/50 dark:shadow-blue-500/20 shadow-lg"
+                    : "border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500"
             )}
             style={{ height: "100%" }}
         >
             <NodeResizer
                 minWidth={200}
-                minHeight={100}
+                minHeight={60}
                 isVisible={selected}
-                lineClassName="border-blue-400"
+                lineClassName="!border-blue-400"
                 handleClassName="!bg-white !border-2 !border-blue-400 !rounded !w-2 !h-2"
             />
+
             {/* Toolbar — floats above node when focused */}
             {editor && isFocused && (
-                <div className="absolute -top-12 left-0 z-50 nodrag nopan">
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 nodrag nopan">
                     <RichTextToolbar editor={editor} />
                 </div>
             )}
 
             {/* Editor */}
-            <div className="nodrag cursor-text" onKeyDown={stopPropagation}>
+            <div className="nodrag cursor-text h-full" onKeyDown={stopPropagation}>
                 <EditorContent editor={editor} />
             </div>
 
-            {/* React Flow Handles - Bidirectional for easier connecting/reconnecting */}
-            <Handle type="source" id="source-left" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="source" id="source-right" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="source" id="source-top" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="source" id="source-bottom" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="target" id="target-left" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="target" id="target-right" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="target" id="target-top" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
-            <Handle type="target" id="target-bottom" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0 group-hover:!opacity-100 transition-opacity" />
+            {/* React Flow Handles - Bidirectional */}
+            <Handle type="source" id="source-left" position={Position.Left} className={handleStyle} />
+            <Handle type="source" id="source-right" position={Position.Right} className={handleStyle} />
+            <Handle type="source" id="source-top" position={Position.Top} className={handleStyle} />
+            <Handle type="source" id="source-bottom" position={Position.Bottom} className={handleStyle} />
+            <Handle type="target" id="target-left" position={Position.Left} className={handleStyle} />
+            <Handle type="target" id="target-right" position={Position.Right} className={handleStyle} />
+            <Handle type="target" id="target-top" position={Position.Top} className={handleStyle} />
+            <Handle type="target" id="target-bottom" position={Position.Bottom} className={handleStyle} />
         </div>
     );
 });

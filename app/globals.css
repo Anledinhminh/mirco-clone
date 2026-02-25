@@ -75,6 +75,10 @@ body {
   max-width: none;
 }
 
+:where(.dark, .dark *) .prose {
+  color: #e2e8f0;
+}
+
 .prose h1 {
   font-size: 1.25rem;
   font-weight: 700;
@@ -120,12 +124,20 @@ body {
   text-decoration: underline;
 }
 
+:where(.dark, .dark *) .prose a {
+  color: #60a5fa;
+}
+
 .prose code {
   background: #f1f5f9;
   padding: 0.1em 0.3em;
   border-radius: 4px;
   font-size: 0.8125em;
   font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+:where(.dark, .dark *) .prose code {
+  background: #334155;
 }
 
 .prose pre {
@@ -150,6 +162,10 @@ body {
   color: #64748b;
   font-style: italic;
   margin: 0 0 0.5rem;
+}
+
+:where(.dark, .dark *) .prose blockquote {
+  color: #94a3b8;
 }
 
 .prose table {
@@ -215,4 +231,33 @@ body {
 
 .ProseMirror>*+* {
   margin-top: 0;
+}
+
+/* ── Text node content adapts to dark mode ── */
+.text-node-content {
+  color: #1e293b;
+}
+
+:where(.dark, .dark *) .text-node-content {
+  color: #e2e8f0;
+}
+
+/* ── Animated dash for connection lines ── */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.animated-dash {
+  animation: dash-flow 0.6s linear infinite;
+}
+
+:where(.dark, .dark *) .prose th {
+  background: #1e293b;
+}
+
+:where(.dark, .dark *) .prose th,
+:where(.dark, .dark *) .prose td {
+  border-color: #334155;
 }

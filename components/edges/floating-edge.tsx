@@ -50,7 +50,7 @@ export const FloatingEdge = memo(function FloatingEdge({
 
     const edgeData = (data as CustomEdgeData) || {};
     const label = edgeData.label ?? "";
-    const pathType = edgeData.pathType ?? "step";
+    const pathType = edgeData.pathType ?? "bezier";
     const color = edgeData.color ?? "#6366f1"; // default indigo-500
 
     const [isEditing, setIsEditing] = useState(false);
@@ -138,7 +138,7 @@ export const FloatingEdge = memo(function FloatingEdge({
     };
 
     if (pathType === "bezier") {
-        const [path, x, y] = getBezierPath(pathParams);
+        const [path, x, y] = getBezierPath({ ...pathParams, curvature: 0.25 });
         edgePath = path;
         labelX = x;
         labelY = y;
@@ -166,9 +166,9 @@ export const FloatingEdge = memo(function FloatingEdge({
                         style={{
                             ...style,
                             stroke: color,
-                            strokeWidth: selected ? 4 : 2,
-                            filter: selected ? "drop-shadow(0 0 2px rgba(99, 102, 241, 0.5))" : "none",
-                            transition: "stroke-width 0.1s ease",
+                            strokeWidth: selected ? 3 : 2,
+                            filter: selected ? `drop-shadow(0 0 3px ${color}50)` : "none",
+                            transition: "stroke-width 0.15s ease, filter 0.15s ease",
                         }}
                     />
 
@@ -179,7 +179,7 @@ export const FloatingEdge = memo(function FloatingEdge({
                                     transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
                                     pointerEvents: "all",
                                 }}
-                                className="absolute z-10 bg-white/90 backdrop-blur-sm px-2 py-1 rounded shadow-sm border border-slate-200 text-xs font-medium text-slate-800"
+                                className="absolute z-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm px-2.5 py-1 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 text-xs font-medium text-slate-700 dark:text-slate-200"
                                 onDoubleClick={handleDoubleClick}
                             >
                                 {isEditing ? (

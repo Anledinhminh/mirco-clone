@@ -1,6 +1,6 @@
 # 📋 Tài Liệu Bàn Giao – Miro Clone
 
-> **Ngày cập nhật:** 2026-02-25 (v2)  
+> **Ngày cập nhật:** 2026-02-25 (v3)  
 > **Project path:** `d:\Manro\miro-clone`  
 > **GitHub:** [https://github.com/Anledinhminh/mirco-clone](https://github.com/Anledinhminh/mirco-clone)
 
@@ -18,12 +18,12 @@
 | 🎨 Infinite Canvas | React Flow với zoom/pan/minimap |
 | 🖱️ Live Cursors | Cursor real-time + smooth animation (80ms transition) |
 | 🔄 Real-time Sync | Nodes & Edges đồng bộ qua Liveblocks storage |
-| 📝 Rich Text Node | Tiptap editor: Bold, Italic, Underline, Font size (custom extension), Color, Alignment. Seamless UI without headers. |
+| 📝 Rich Text Node | Tiptap editor: Bold, Italic, Underline, Font size (custom extension), Color, Alignment. Placeholder text, dark mode, auto-height. |
 | 🖼️ Image Node | URL input + Upload từ file picker + Drag & Drop + Ctrl+V screenshot, có optimize ảnh client-side trước khi lưu để giảm lag |
 | 📌 Sticky Note | Markdown rendering, 4 colors (yellow/blue/pink/green) |
 | 🔲 Shape Node | Rectangle, Circle, Triangle, Diamond with text support |
 | 🖍️ Pen Tool | Freehand drawing using `perfect-freehand` with real-time sync |
-| 🔗 Ultimate Connections | Bi-directional handles (source/target 4 cạnh), tăng vùng bắt kết nối/reconnect (`connectionRadius`, `reconnectRadius`), routing ổn định theo hướng tương đối giữa 2 node, live preview đường nối mượt kiểu bezier + Quick-Create khi thả vào vùng trống. |
+| 🔗 Ultimate Connections | Bi-directional handles (source/target 4 cạnh), hybrid routing (dominant-side + brute-force closest pair cho diagonal), bezier mặc định, live preview mượt hơn với ghost stroke, dark mode labels. |
 | 🌙 Dark Mode | Sáng/Tối theme toàn ứng dụng thông qua `next-themes` |
 | 📥 Export to PNG | Tải xuống canvas hiện tại dạng PNG qua `html-to-image` |
 | 🔧 Node Resize | Kéo handle để thay đổi kích thước (NodeResizer) |
@@ -213,3 +213,42 @@ npm run dev           # Terminal 2
 - Auto-detect WebP support, fallback JPEG.
 - Mặc định `maxDimension: 1800`, `quality: 0.85` (nhỏ hơn trước, phù hợp Liveblocks quota).
 - Export `OptimizeOptions` interface cho consumer tuỳ chỉnh.
+
+---
+
+## 10. Cập nhật mới (Session 2026-02-25 v3)
+
+### ✅ Text Node — Polish toàn diện
+
+- **Dark mode**: container `bg-white dark:bg-slate-800`, border, shadow đều hỗ trợ dark mode.
+- **Placeholder**: Thêm `@tiptap/extension-placeholder` — hiện "Type something…" khi node trống, thay vì nội dung tĩnh "Double-click to edit…".
+- **Auto-height**: `ResizeObserver` trên `.ProseMirror` content → trigger re-measure khi nội dung thay đổi.
+- **Toolbar centered**: Toolbar giờ float ở center (`left-1/2 -translate-x-1/2`) thay vì bám góc trái.
+- **`minHeight` giảm**: từ 100px xuống 60px — text node gọn hơn khi ít nội dung.
+- **Handle style DRY**: Trích `handleStyle` thành biến chung, handle nhỏ hơn (`!w-2.5 !h-2.5`) + `!rounded-full`.
+- **Rich Text Toolbar dark mode**: Tất cả button/select/divider đều hỗ trợ dark mode class.
+
+### ✅ Connecting Lines — Routing & Visual upgrade
+
+#### `lib/edge-utils.ts` — Hybrid routing algorithm:
+- **Aligned nodes** (ratio > 1.4): dùng dominant-side logic (nhanh, sạch).
+- **Diagonal nodes**: brute-force tìm cặp side-center ngắn nhất trong 16 tổ hợp (4×4).
+- Kết quả: đường nối tự nhiên hơn khi node ở góc chéo, không bị lệch cạnh.
+
+#### `components/edges/floating-edge.tsx`:
+- **Default path type đổi sang `bezier`** — mượt hơn step, giống Miro hơn.
+- **Curvature 0.25** cho bezier path — cong vừa đủ.
+- **Selected glow**: dùng `drop-shadow` theo màu edge thay vì hardcode rgba.
+- **Label dark mode**: `bg-white/95 dark:bg-slate-800/95`, border, text đều hỗ trợ dark.
+- **Label rounded-lg**: bo tròn hơn, padding rộng hơn.
+
+#### `components/edges/connection-line.tsx`:
+- **Ghost stroke**: thêm stroke mờ `opacity 0.15, width 10` bên dưới — dễ nhìn hơn khi kéo.
+- **Valid indicator**: circle target đổi fill khi valid (`strokeColor` thay vì luôn trắng), phóng to (`r=5`).
+- **Curvature 0.25**: đồng bộ với floating edge.
+
+#### `app/globals.css`:
+- **`animated-dash` keyframe**: defined animation cho stroke-dashoffset (trước đó class tồn tại nhưng không có CSS).
+- **`.text-node-content`**: class riêng điều khiển màu text theo dark mode.
+- **Prose dark mode**: thêm dark variants cho `.prose`, `.prose a`, `.prose code`, `.prose blockquote`, `.prose th/td`.
+
